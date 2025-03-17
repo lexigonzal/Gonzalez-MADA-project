@@ -34,21 +34,19 @@ Note that for functions that come from specific packages (instead of base R), I 
 package::function() that's not required one could just call the function specifying the package makes it clearer where the function "lives",
 but it adds typing. You can do it either way.
 
+
 ```{r}
 # path to data
 # note the use of the here() package and not absolute paths
-data_location <- here::here("data","raw-data","exampledata.xlsx")
+data_location <- here::here("data","raw-data","lmonoisolates.xls")
 rawdata <- readxl::read_excel(data_location)
 ```
 
 
 # Check data
 
-First we can look at the codebook
-
 ```{r}
-codebook <- readxl::read_excel(data_location, sheet ="Codebook")
-print(codebook)
+summary(rawdata)
 ```
 
 
@@ -61,63 +59,98 @@ head(rawdata)
 skimr::skim(rawdata)
 ```
 
+```{r}
+unique(rawdata$BioSample)
+```
+```{r}
+unique(rawdata$Location)
+```
+```{r}
+unique(rawdata$`Create date`)
+```
+
+
 
 
 # Cleaning
 
-By inspecting the data as done above, we find some problems that need addressing:
-
-First, there is an entry for height which says "sixty" instead of a number. 
-Does that mean it should be a numeric 60? It somehow doesn't make sense since the weight is 60kg, which can't happen for a 60cm person (a baby).
-Since we don't know how to fix this, we might decide to remove the person. This "sixty" entry also turned all Height entries into characters instead of numeric. That conversion to character also means that our summary function isn't very meaningful. So let's fix that first.
+After inspecting the data,I have dedcided to remove some variables that I will not use. This will be serovar, assembly, biosample for now. I want to try and make a map so i will keep in isolate names and snp distances and what not.
 
 ```{r}
-d1 <- rawdata %>% dplyr::filter( Height != "sixty" ) %>% 
-                  dplyr::mutate(Height = as.numeric(Height))
-skimr::skim(d1)
-hist(d1$Height)
+lmono2 <- rawdata %>% 
+  select(-c(Serovar, Assembly, BioSample))
+```
+Next I want to reformat the dates so that it removes the timestamp. I will just be keeping the year, month and day
+```{r}
+lmono2$`Create date` <- as.Date(lmono2$`Create date`)
+print(lmono2$`Create date`)
+```
+Next I will see the range of dates and select a 15 year time frame.
+```{r}
+lmono3 <- lmono2 %>%
+  filter(`Create date` >= as.Date("2010-01-01") & `Create date` <= as.Date("2024-12-31"))
+```
+Finally I will check for any missing entries, if there are none I am good to move on.
+```{r}
+any(is.na(lmono3))
+lmono3[!complete.cases(lmono3), ]  # Shows me what rows have missing data
+
+```
+#So this showed me that I need to remove another variable, all of the values for computed type and ...18 are NA!
+```{r}
+lmono4 <- lmono3 %>%
+  select(-c(`Computed types`,...18))
+```
+#Now lets see where the missing data is 
+```{r}
+lmono4[!complete.cases(lmono4), ] 
+```
+#Now, I really want to compare food vs clinical isolates so I will make 2 new variables, One variable called Food amd one called Clinical. Food will have all entries that are food sources
+```{r}
+#first I am going to look at the entries, some entries are specific like hotdog or blood and some just say food or clinical, I want to include those specific ones as well so I need to see what I am working with. 
+unique(lmono4$`Isolation type`)
+#Some of the products under environmental other are food products so I will put environmnetal other into its own category and then filter out the non-food products since it is mostly foods.
 ```
 
-Now we see that there is one person with a height of 6. That could be a typo, or someone mistakenly entered their height in feet. Since we unfortunately don't know, we might need to remove this person, which we'll do here.
-
 ```{r}
-d2 <- d1 %>% dplyr::mutate( Height = replace(Height, Height=="6",round(6*30.48,0)) )
-skimr::skim(d2)
-```
-
-Height values seem ok now.
-
-Now let's look at the `Weight` variable. There is a person with weight of 7000, which is impossible, and one person with missing weight.
-To be able to analyze the data, we'll remove those individuals as well.
-
-```{r}
-d3 <- d2 %>%  dplyr::filter(Weight != 7000) %>% tidyr::drop_na()
-skimr::skim(d3)
-```
-
-Now checking the `Gender` variable. Gender should be a categorical/factor variable but is loaded as character. We can fix that with simple base R code to mix things up.
-
-```{r}
-d3$Gender <- as.factor(d3$Gender)  
-skimr::skim(d3)
+#This will create new variable "clinical"
+lmono5 <- lmono4 %>%
+  mutate(clinical = ifelse(`Isolation type` == "clinical", "Yes", "No"))
 ```
 
 
-Now we see that there is another NA, but it's not `NA` from R, instead it was loaded as character and is now considered as a category.
-Well proceed here by removing that individual with that NA entry. Since this keeps an empty category for Gender, I'm also using droplevels() to get rid of it.
-
 ```{r}
-d4 <- d3 %>% dplyr::filter( !(Gender %in% c("NA","N")) ) %>% droplevels()
-skimr::skim(d4)
+lmono6 <- lmono5 %>%
+  mutate(food = case_when(
+    `Isolation type` %in% c("environmental/other", "Not Sliced-Pork", "Sliced-Pork", 
+                            "Not Sliced-Turkey", "Sausage Products-Pork", 
+                            "Salad/Spread/Pate-Pork", "Salad/Spread/Pate-Chicken", 
+                            "Meat/Nonmeat Combination-Beef", "Meat/Nonmeat Combination", 
+                            "Sliced-Beef", "Sliced-Turkey", "Not Sliced-Chicken", 
+                            "Meat/Nonmeat Combination-Other Poultry", 
+                            "Meat/Nonmeat Combination-Combination species", "raw", 
+                            "Meat/Nonmeat Combination-Chicken", 
+                            "Sausage Products-Unknown species", 
+                            "Meat/Nonmeat Combination-Turkey", 
+                            "Sausage Products-Beef") & 
+    !`Isolation source` %in% c("environmental swab", "environmental swab sponge floor", 
+                               "condensate tray", "squeegee", "chain", "wrench", 
+                               "underhopper", "environmental swab sponge non food contact surface", 
+                               "environmental swab sponge pallet in cooler", 
+                               "environmental swab of shelf", 
+                               "Environmental Isolate, sponge swab") ~ "Yes",
+    TRUE ~ "No"
+  ))
+
+```
+#Finally, I want to remove the observations that are stool samples that will be bovine, pigeon and catbird
+```{r}
+lmono_final <- lmono6 %>%
+  filter(!`Isolation type` %in% c("bos taurus", "pigeon", "catbird"))
 ```
 
-
-All done, data is clean now. 
-
-Let's assign at the end to some final variable, this makes it easier to add further cleaning steps above.
-
 ```{r}
-processeddata <- d4
+processeddata <-lmono_final
 ```
 
 
@@ -137,7 +170,5 @@ saveRDS(processeddata, file = save_data_location)
 
 
 
-# Notes
 
-Removing anyone who had "faulty" or missing data is one approach. It's often not the best. based on your question and your analysis approach, you might want to do cleaning differently (e.g. keep individuals with some missing information).
 

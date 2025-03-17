@@ -22,10 +22,9 @@ library(knitr)
 
 **Authors**
 
--   First Autor$^{1,2,*}$ (ORCID: 0000-0000-1234-5678)
+-   Alexis Gonzalez $^{1,2,*}$ (ORCID: 0000-0000-1234-5678)
 -   Second Author$^{3, *}$
--   Third Autor$^{3, \dagger}$
--   Last Author$^{1, 2, \land}$
+-   $^{3, \dagger}$
 
 **Author affiliations**
 
@@ -61,11 +60,20 @@ For this project I will utilize data from the National Center for Biotechnology 
 
 ## Description of data and data source
 
-*Describe what the data is, what it contains, where it is from, etc. Eventually this might be part of a methods section.*
+This project will utilize two data sources
+
+1.  National Center for Biotechnology Information's Pathogen Detection system
+2.  CDC National Notifiable Disease Surveillance System
 
 ## Questions/Hypotheses to be addressed
 
-*State the research questions you plan to answer with this analysis.*
+1.  How has the presence of listeria in food products changes over time (NCBI data)
+2.  How has the rate of listeriosis cases changed over time
+3.  How does the positive rate of food cases compare to the rate of listeriosis cases
+4.  Comparing and contrasting the isolates found in food to the isolates found in clinical samples.
+5.  What are some commonalities between establishments and locations where listeria is found and where cases are diagnosed
+6.  Follow up to 4, are these large scale companies or small scale companies.
+7.  Maybe a prediction model based to predict listeriosis cases based on number of positive isolates found?
 
 To cite other work (important everywhere, but likely happens first in introduction), make sure your references are in the bibtex file specified in the YAML header above and have the right bibtex key. Then you can include like this:
 
@@ -88,13 +96,13 @@ Sometimes you might want to show a schematic diagram/figure that was not created
 knitr::include_graphics(here("assets","antigen-recognition.png"))
 ```
 
-## Data aquisition
-
-*As applicable, explain where and how you got the data. If you directly import the data from an online source, you can combine this section with the next.*
-
 ## Data import and cleaning
 
-*Write code that reads in the file and cleans it so it's ready for analysis. Since this will be fairly long code for most datasets, it might be a good idea to have it in one or several R scripts. If that is the case, explain here briefly what kind of cleaning/processing you do, and provide more details and well documented code somewhere (e.g. as supplement in a paper). All materials, including files that contain code, should be commented well so everyone can follow along.*
+Before important the NCBI data, I filtered the data to what I wanted using the sites filters. I filtered data down to organism = Listeria monocytogenes, location = USA , this left me with 33,264 isolates.
+
+I will briefly use the NNDSS data because unfortunately, it is only availble from 2016 to 2022. The NCBI data containes clinical isolates that date farther back to we will consider those isolates to be "cases". Those cases are what we will compare to the source isolates (environmental, food, etc)
+
+The data cleaning code can be found in the processingfile under data-\>rawdata. The cleaning processed involved removing variables that I would not be using such as biosample numbers, assembly numbers, and variables that contained no data. Next I made some changes to date entries. They originally contained the time the isolate was uploaded so I removed that. I also created 2 new variables showing if the isolate was from a food sample or a clinical sample . The variable "Clinical" has a yes or no entry for if the sample is clinical, the same goes for the Food variable.
 
 ## Statistical analysis
 
@@ -105,6 +113,8 @@ knitr::include_graphics(here("assets","antigen-recognition.png"))
 # Results
 
 ## Exploratory/Descriptive analysis
+
+The full code for the EDA is under code-\>eda-code-\>eda.qmd
 
 *Use a combination of text/tables/figures to explore and describe your data. Show the most important descriptive results here. Additional ones should go in the supplement. Even more can be in the R and Quarto files that are part of your project.*
 
@@ -174,3 +184,7 @@ Note that this cited reference will show up at the end of the document, the refe
 {{< pagebreak >}}
 
 # References
+
+```{r}
+
+```
