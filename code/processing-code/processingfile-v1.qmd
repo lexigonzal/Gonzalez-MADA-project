@@ -138,7 +138,7 @@ lmono6 <- lmono5 %>%
                                "underhopper", "environmental swab sponge non food contact surface", 
                                "environmental swab sponge pallet in cooler", 
                                "environmental swab of shelf", 
-                               "Environmental Isolate, sponge swab") ~ "Yes",
+                               "Environmental Isolate, sponge swab","environmental swab sponge") ~ "Yes",
     TRUE ~ "No"
   ))
 
@@ -146,7 +146,7 @@ lmono6 <- lmono5 %>%
 #Finally, I want to remove the observations that are stool samples that will be bovine, pigeon and catbird
 ```{r}
 lmono_final <- lmono6 %>%
-  filter(!`Isolation type` %in% c("bos taurus", "pigeon", "catbird"))
+  filter(!`Isolation type` %in% c("Bos taurus\"\"", "pigeon", "catbird"))
 ```
 
 ```{r}
