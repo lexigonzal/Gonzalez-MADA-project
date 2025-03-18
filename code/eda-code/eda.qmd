@@ -146,7 +146,7 @@ mydata %>%
   theme_minimal() +
   theme(axis.text.x = element_text(size = 10, angle = 45, hjust = 1))
 ```
-#Seeing a few issues with my data cleaning, I will go back to processing file and fix it up
+#We see here that the most food isolates for listeria monocytogenes are found in Ready To Eat products, that is a term used by Food Safety and Inspection Service to describe any food products that do not require cooking or sterilization to safely consume.
 
 # Notes
 

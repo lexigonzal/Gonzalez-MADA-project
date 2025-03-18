@@ -138,7 +138,8 @@ lmono6 <- lmono5 %>%
                                "underhopper", "environmental swab sponge non food contact surface", 
                                "environmental swab sponge pallet in cooler", 
                                "environmental swab of shelf", 
-                               "Environmental Isolate, sponge swab","environmental swab sponge") ~ "Yes",
+                               "Environmental Isolate, sponge swab","environmental swab sponge","Environmental-factory","Environmental-Wheels on trolley for spinner basket","Environmental-Drain basin between retort 1 and 2","bottom of sliding door in pasta room to blast","bottom of sliding door in pasta room to blast","Environmental-Bottom of sliding door in pasta room to blast","	
+environmental swab from drain","environmental", "water sediment","environmental: non-food-contact surface", "soil","manure", "Environmental: food-contact surface","environment","swab") ~ "Yes",
     TRUE ~ "No"
   ))
 
