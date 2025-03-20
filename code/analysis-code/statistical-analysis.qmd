@@ -1,0 +1,12 @@
+---
+title: 
+author: 
+date: 
+output: html_document
+---
+
+
+#Here I will perform some basic statistical analysis.
+
+#Lets start with a basic glm of time and food and time and clinical. We will also do some visualizations using a histrogram
+

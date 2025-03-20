@@ -27,9 +27,6 @@ mydata <- readRDS(data_location)
 ```
 
 
-
-
-
 # Data exploration through tables
 
 Showing a bit of code to produce and save a summary table.
@@ -42,8 +39,6 @@ print(summary_df)
 summarytable_file = here("results", "tables", "summarytable.rds")
 saveRDS(summary_df, file = summarytable_file)
 ```
-
-We are saving the results to the `results` folder. Depending on how many tables/figures you have, it might make sense to have separate folders for each. And/or you could have separate folders for exploratory tables/figures and for final tables/figures. Just choose a setup that makes sense for your project and works for you, and provide enough documentation that someone can understand what you are doing.
 
 
 # Data exploration through figures
@@ -148,8 +143,5 @@ mydata %>%
 ```
 #We see here that the most food isolates for listeria monocytogenes are found in Ready To Eat products, that is a term used by Food Safety and Inspection Service to describe any food products that do not require cooking or sterilization to safely consume.
 
-# Notes
-
-For your own explorations, tables and figures can be "quick and dirty". As long as you can see what's going on, there is no need to polish them. That's in contrast to figures you'll produce for your final products (paper, report, presentation, website, etc.). Those should look as nice, polished and easy to understand as possible.
 
 
