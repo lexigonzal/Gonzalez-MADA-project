@@ -1,18 +1,9 @@
 ---
-title: "An example cleaning script"
-author: "Andreas Handel"
+title: " cleaning script"
+author: "Alexis Gonzalez"
 date: "2024-02-07"
 output: html_document
 ---
-
-
-# Processing script
-
-This contains the same code and comments/information as `processingcode.R`.
-
-This just shows it as Quarto file, to give you an idea how to do it in a setup that combines code and text in a single file.
-
-See the other Quarto file for my currently preferred approach of pulling code from the R script into the Quarto file.
 
 
 # Setup
@@ -20,11 +11,11 @@ See the other Quarto file for my currently preferred approach of pulling code fr
 Load needed packages. make sure they are installed.
 
 ```{r}
-library(readxl) #for loading Excel files
-library(dplyr) #for data processing/cleaning
-library(tidyr) #for data processing/cleaning
-library(skimr) #for nice visualization of data 
-library(here) #to set paths
+library(readxl) 
+library(dplyr) 
+library(tidyr)
+library(skimr) 
+library(here) 
 ```
 
 
@@ -90,7 +81,7 @@ Next I will see the range of dates and select a 15 year time frame.
 lmono3 <- lmono2 %>%
   filter(`Create date` >= as.Date("2010-01-01") & `Create date` <= as.Date("2024-12-31"))
 ```
-Finally I will check for any missing entries, if there are none I am good to move on.
+Finally I will check for any missing entries
 ```{r}
 any(is.na(lmono3))
 lmono3[!complete.cases(lmono3), ]  # Shows me what rows have missing data

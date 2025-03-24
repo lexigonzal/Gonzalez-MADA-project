@@ -34,13 +34,15 @@ For this project I will utilize data from the National Center for Biotechnology 
 
 # Summary/Abstract
 
+Will complete at the end
+
 {{< pagebreak >}}
 
 # Introduction
 
 ## General Background Information
 
-*Provide enough background on your topic that others can understand the why and how of your analysis*
+*Listeria monocytogenes* is a ubiquitous, gram positive, intra-cellular pathogen renowned for its adaptability and resilience (cite). This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[cite\]. Listeriosis causes 1,600 infections and 260 deaths each year with an over 95% hospitalization rate. Listeria can be found in a wide range of meats, produce, and dairy, such as deli meats, soft cheese, and melons. The Centers for Disease Control and Prevention has deemed *Listeria monocytogenes* as a nationally notifiable disease which is a disease that federal agencies, healthcare providers, and laboratories are required to report. All positive isolate data found in the environment, food samples, clinical samples and animal samples are uploaded to the National Center for Biotechnology Information's Pathogen Detection system.
 
 ## Description of data and data source
 
@@ -65,14 +67,14 @@ This project will utilize two data sources
 
 ## Schematic of workflow
 
-```{}
+```         
 ```
 
 ## Data import and cleaning
 
 Before important the NCBI data, I filtered the data to what I wanted using the sites filters. I filtered data down to organism = Listeria monocytogenes, location = USA , this left me with 33,264 isolates.
 
-I will briefly use the NNDSS data because unfortunately, it is only availble from 2016 to 2022. The NCBI data containes clinical isolates that date farther back to we will consider those isolates to be "cases". Those cases are what we will compare to the source isolates (environmental, food, etc)
+I will briefly use the NNDSS data because unfortunately, it is only available from 2016 to 2022. The NCBI data contains clinical isolates that date farther back to we will consider those isolates to be "cases". Those cases are what we will compare to the source isolates (environmental, food, etc)
 
 The data cleaning code can be found in the processingfile under data-\>rawdata. The cleaning processed involved removing variables that I would not be using such as biosample numbers, assembly numbers, and variables that contained no data. Next I made some changes to date entries. They originally contained the time the isolate was uploaded so I removed that. I also created 2 new variables showing if the isolate was from a food sample or a clinical sample . The variable "Clinical" has a yes or no entry for if the sample is clinical, the same goes for the Food variable.
 
