@@ -26,57 +26,31 @@ library(knitr)
 
 {{< pagebreak >}}
 
-# Part 1 Project Idea
-
-For this project I will utilize data from the National Center for Biotechnology Information's Pathogen Detection system. This is a database that collects genomic data from a various different sources such as state laboratories, private laboratories, and government agencies like CDC, FDA, USDA, and EPA. It is primarily used a surveillance tool to monitor isolates,clusters, antimicrobial resistance, and active outbreaks. As someone that keeps track of foodborne pathogen outbreaks, I have noticed the increase in Listeria monocytogenes outbreaks. With the NCBI data I would like to visualize the occurence of new listeria strains, compare trees for clinical vs nonclincal isolates, and maybe see the correlation between the number of clinical isolates to the number of non-clincal isolates, maybe investigate how often non-clinical isolates have a clinical in the same cluster. I could also look at distribution across the United States. There is some data for other countries, but far less than the U.S. . For this project I will filter the data to show isolates collected from January 1, 2015 to January 1, 2025. This gives me 22,980 isolates and 2,365 clusters.
-
-{{< pagebreak >}}
-
 # Summary/Abstract
 
 Will complete at the end
 
 {{< pagebreak >}}
 
-# Introduction
+#  1. Introduction
 
-## General Background Information
+Listeria monocytogenes is a ubiquitous, gram-positive, intracellular pathogen renowned for its adaptability and resilience\[5\]. This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[10\]. While immunocompetent individuals may only experience mild gastroenteritis, disseminated infection in the immunocompromised has a lethality rate of \~30%\[8\].  Listeriosis causes 1,600 infections and 260 deaths each year with a 95% hospitalization rate. The United States Department of Agriculture lists 6 foods that are at high risks for L.monocytogenes contamination; unpasteurized dairy products, soft cheeses, raw fruits and vegetables (particularly sprouts, enoki mushrooms, and melons), Ready-To-Eat deli meats and hot dogs, refrigerated pate, and refrigerated smoked seafood. Listeria contamination typically happens post-lethality which exposes a ready-to-eat product to a processing environment after a form of lethality treatment has taken place. Post lethality processing environments can be deli slicers, submersion in a brine solution, meat encassing, bagging or packaging. The USDA recommends all establishments to take part in additional post lethality treatment such as antimicrobial coatings, pasteurization, or chemical or physical sanitation of equipment. Sanitation tends to be the more cost effective option for many establishments but, due to incorrect sanitation practices and L.monocytogenes robust bio-film formation capabilities sanitation does not always prevent contamination. Outbreaks have been seen in a range of products in recent years. From 2023 to 2025 there have been over 10 multi-state listeria outbreaks. The most recent being an outbreak beginning February 22, 2025 in frozen supplement shakes. These shakes were distributed among institutional facilities such as long term care facilities and hospitals. This outbreak has resulted in 38 cases, 37 hospitalizations, and 12 deaths so far as this investigation is ongoing as of April 2025. 
 
-*Listeria monocytogenes* is a ubiquitous, gram positive, intra-cellular pathogen renowned for its adaptability and resilience (cite). This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[cite\]. Listeriosis causes 1,600 infections and 260 deaths each year with an over 95% hospitalization rate. Listeria can be found in a wide range of meats, produce, and dairy, such as deli meats, soft cheese, and melons. The Centers for Disease Control and Prevention has deemed *Listeria monocytogenes* as a nationally notifiable disease which is a disease that federal agencies, healthcare providers, and laboratories are required to report. All positive isolate data found in the environment, food samples, clinical samples and animal samples are uploaded to the National Center for Biotechnology Information's Pathogen Detection system.
-
-## Description of data and data source
-
-This project will utilize two data sources
-
-1.  National Center for Biotechnology Information's Pathogen Detection system
-2.  CDC National Notifiable Disease Surveillance System
-
-## Questions/Hypotheses to be addressed
-
-1.  How has the presence of listeria in food products changes over time (NCBI data)
-2.  How has the rate of listeriosis cases changed over time
-3.  How does the positive rate of food cases compare to the rate of listeriosis cases
-4.  Comparing and contrasting the isolates found in food to the isolates found in clinical samples.
-5.  What are some commonalities between establishments and locations where listeria is found and where cases are diagnosed
-6.  Follow up to 4, are these large scale companies or small scale companies.
-7.  Maybe a prediction model based to predict listeriosis cases based on number of positive isolates found?
+\
+This study aims to investigate trends in listeria isolates found in clinical and non-clinical samples in efforts to predict cases.  This study will investigate time of a year and number of non-clinical isolates as a predictor for clinical isolates, and food type as a predictor for food isolates , non-clinical isolates that originate in food products. The data source being used to conduct this study is the National Center for Biotechnology Information\'s Pathogen Detection browser. Pathogen Detection is a culmination of pathogen genomic sequences from federal, state, private, and foreign laboratories. It is utilized constantly by public health officials,epidemiologists, and scientists to identify chains of transmission. The new isolates are analyzed in real time to aid in that identification by developing clusters. Listeria monocytogenes is a nationally notifiable disease so, many laboratories opt to share their data nationally through the Pathogen Detection Browser. By utilizing the most up to date data and identifying trends, this study hopes to provide information to form new guidelines on protecting the public from Listeriosis infection.
 
 {{< pagebreak >}}
 
-# Methods
+# 2. Methods
 
-## Schematic of workflow
+## 
 
 ```         
 ```
 
 ## Data import and cleaning
 
-Before important the NCBI data, I filtered the data to what I wanted using the sites filters. I filtered data down to organism = Listeria monocytogenes, location = USA , this left me with 33,264 isolates.
-
-I will briefly use the NNDSS data because unfortunately, it is only available from 2016 to 2022. The NCBI data contains clinical isolates that date farther back to we will consider those isolates to be "cases". Those cases are what we will compare to the source isolates (environmental, food, etc)
-
-The data cleaning code can be found in the processingfile under data-\>rawdata. The cleaning processed involved removing variables that I would not be using such as biosample numbers, assembly numbers, and variables that contained no data. Next I made some changes to date entries. They originally contained the time the isolate was uploaded so I removed that. I also created 2 new variables showing if the isolate was from a food sample or a clinical sample . The variable "Clinical" has a yes or no entry for if the sample is clinical, the same goes for the Food variable.
+This study utilized publicly available data through NCBI Pathogen Detection. Before downloading the data from the Isolate Browser, the data was filtered to only include Listeria monocytogenes isolates found in or originating in the United States of America. This resulted in 33,264 L.monocytogenes isolates. Once loaded into R the data set was minimized further by selecting isolates that were entered between January 1, 2010 and December 31, 2024. Several variables were removed from the dataset as they did not contribute to the analysis. These were isolate identification and clustering data such as Serovar, Biosample number, Assembly, Min-same and Min-diff SNPs, computed types, and a variable called ...18 ,presumably referring to 18s primers, that contained no data.
 
 ## Statistical analysis
 
@@ -126,3 +100,5 @@ knitr::kable(resulttable2)
 ```{r}
 
 ```
+
+*Listeria monocytogenes* is a ubiquitous, gram positive, intra-cellular pathogen renowned for its adaptability and resilience (cite). This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[cite\].Listeriosis causes 1,600 infections and 260 deaths each year with an over 95% hospitalization rate. Listeria can be found in a wide range of meats, produce, and dairy, such as deli meats, soft cheese, and melons. The Centers for Disease Control and Prevention has deemed *Listeria monocytogenes* as a nationally notifiable disease which is a disease that federal agencies, healthcare providers, and laboratories are required to report. All positive isolate data found in the environment, food samples, clinical samples and animal samples are uploaded to the National Center for Biotechnology Information's Pathogen Detection system.
