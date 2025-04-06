@@ -53,19 +53,23 @@ table(processeddata$food)
 ```
 #Now lets visualize these tables using bar graphs
 ```{r}
-ggplot(mydata, aes(x = clinical)) + 
+bar1 <- ggplot(mydata, aes(x = clinical)) + 
   geom_bar(fill = "steelblue") + 
   labs(title = "Yes/No Distribution", x = "Response", y = "Count") + 
   theme_minimal()
+    
+
 
 ```
 ```{r}
 library(ggplot2)
 
-ggplot(mydata, aes(x = food)) + 
+p1 <- ggplot(mydata, aes(x = food)) + 
   geom_bar(fill = "orange") + 
   labs(title = "Yes/No Distribution", x = "Response", y = "Count") + 
   theme_minimal()
+figure_file=here("results/figures","foodisolatecount.png")
+ggsave(filename=figure_file, plot = p1, width = 8, height=6)
 
 ```
 #cross tabulation

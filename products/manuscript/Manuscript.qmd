@@ -32,29 +32,18 @@ Will complete at the end
 
 {{< pagebreak >}}
 
-#  1. Introduction
+# 1. Introduction
 
 Listeria monocytogenes is a ubiquitous, gram-positive, intracellular pathogen renowned for its adaptability and resilience\[5\]. This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[10\]. While immunocompetent individuals may only experience mild gastroenteritis, disseminated infection in the immunocompromised has a lethality rate of \~30%\[8\].  Listeriosis causes 1,600 infections and 260 deaths each year with a 95% hospitalization rate. The United States Department of Agriculture lists 6 foods that are at high risks for L.monocytogenes contamination; unpasteurized dairy products, soft cheeses, raw fruits and vegetables (particularly sprouts, enoki mushrooms, and melons), Ready-To-Eat deli meats and hot dogs, refrigerated pate, and refrigerated smoked seafood. Listeria contamination typically happens post-lethality which exposes a ready-to-eat product to a processing environment after a form of lethality treatment has taken place. Post lethality processing environments can be deli slicers, submersion in a brine solution, meat encassing, bagging or packaging. The USDA recommends all establishments to take part in additional post lethality treatment such as antimicrobial coatings, pasteurization, or chemical or physical sanitation of equipment. Sanitation tends to be the more cost effective option for many establishments but, due to incorrect sanitation practices and L.monocytogenes robust bio-film formation capabilities sanitation does not always prevent contamination. Outbreaks have been seen in a range of products in recent years. From 2023 to 2025 there have been over 10 multi-state listeria outbreaks. The most recent being an outbreak beginning February 22, 2025 in frozen supplement shakes. These shakes were distributed among institutional facilities such as long term care facilities and hospitals. This outbreak has resulted in 38 cases, 37 hospitalizations, and 12 deaths so far as this investigation is ongoing as of April 2025. 
 
 \
-This study aims to investigate trends in listeria isolates found in clinical and non-clinical samples in efforts to predict cases.  This study will investigate time of a year and number of non-clinical isolates as a predictor for clinical isolates, and food type as a predictor for food isolates , non-clinical isolates that originate in food products. The data source being used to conduct this study is the National Center for Biotechnology Information\'s Pathogen Detection browser. Pathogen Detection is a culmination of pathogen genomic sequences from federal, state, private, and foreign laboratories. It is utilized constantly by public health officials,epidemiologists, and scientists to identify chains of transmission. The new isolates are analyzed in real time to aid in that identification by developing clusters. Listeria monocytogenes is a nationally notifiable disease so, many laboratories opt to share their data nationally through the Pathogen Detection Browser. By utilizing the most up to date data and identifying trends, this study hopes to provide information to form new guidelines on protecting the public from Listeriosis infection.
+This study aims to investigate trends in listeria isolates found in clinical and non-clinical samples in efforts to predict cases.  This study will investigate time of a year and number of non-clinical isolates as a predictor for clinical isolates, and food type as a predictor for food isolates , non-clinical isolates that originate in food products. The data source being used to conduct this study is the National Center for Biotechnology Information's Pathogen Detection browser. Pathogen Detection is a culmination of pathogen genomic sequences from federal, state, private, and foreign laboratories. It is utilized constantly by public health officials,epidemiologists, and scientists to identify chains of transmission. The new isolates are analyzed in real time to aid in that identification by developing clusters. Listeria monocytogenes is a nationally notifiable disease so, many laboratories opt to share their data nationally through the Pathogen Detection Browser. By utilizing the most up to date data and identifying trends, this study hopes to provide information to form new guidelines on protecting the public from Listeriosis infection.
 
 {{< pagebreak >}}
 
 # 2. Methods
 
-## 
-
-```         
-```
-
-## Data import and cleaning
-
 This study utilized publicly available data through NCBI Pathogen Detection. Before downloading the data from the Isolate Browser, the data was filtered to only include Listeria monocytogenes isolates found in or originating in the United States of America. This resulted in 33,264 L.monocytogenes isolates. Once loaded into R the data set was minimized further by selecting isolates that were entered between January 1, 2010 and December 31, 2024. Several variables were removed from the dataset as they did not contribute to the analysis. These were isolate identification and clustering data such as Serovar, Biosample number, Assembly, Min-same and Min-diff SNPs, computed types, and a variable called ...18 ,presumably referring to 18s primers, that contained no data.
-
-## Statistical analysis
-
-*Explain anything related to your statistical analyses.*
 
 {{< pagebreak >}}
 
@@ -62,22 +51,32 @@ This study utilized publicly available data through NCBI Pathogen Detection. Bef
 
 ## Exploratory/Descriptive analysis
 
-The full code for the EDA is under code-\>eda-code-\>eda.qmd
+```{r}
+knitr::include_graphics(here("results/figures", "foodisolatecount.png"))
+```
+
+```{r}
+
+```
 
 ## Basic statistical analysis
 
 ```{r}
-#| label: fig-result
-#| fig-cap: "Height and weight stratified by gender."
-#| echo: FALSE
-knitr::include_graphics(here("results","figures","height-weight-stratified.png"))
+
 ```
 
 ## Full analysis
 
+#Need to insert figures
+
+```{r}
+knitr::include_graphics(here("results/figures", "clinicalxtime.png"))
+
+```
+
 ```{r}
 #| label: tbl-resulttable2
-#| tbl-cap: "Linear model fit table."
+#| tbl-cap: "Linear model fit table."...................;;;;;;;;;;;;;;;::::::::::::::::P
 #| echo: FALSE
 resulttable2 = readRDS(here("results","tables","resulttable2.rds"))
 knitr::kable(resulttable2)
@@ -100,5 +99,3 @@ knitr::kable(resulttable2)
 ```{r}
 
 ```
-
-*Listeria monocytogenes* is a ubiquitous, gram positive, intra-cellular pathogen renowned for its adaptability and resilience (cite). This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[cite\].Listeriosis causes 1,600 infections and 260 deaths each year with an over 95% hospitalization rate. Listeria can be found in a wide range of meats, produce, and dairy, such as deli meats, soft cheese, and melons. The Centers for Disease Control and Prevention has deemed *Listeria monocytogenes* as a nationally notifiable disease which is a disease that federal agencies, healthcare providers, and laboratories are required to report. All positive isolate data found in the environment, food samples, clinical samples and animal samples are uploaded to the National Center for Biotechnology Information's Pathogen Detection system.

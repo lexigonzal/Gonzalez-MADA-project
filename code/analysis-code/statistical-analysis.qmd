@@ -56,7 +56,7 @@ summary(model)
 
 ggplot(mydata, aes(x = days_since_start, y = clinical_numeric)) +
   geom_jitter(height = 0.05, width = 5, alpha = 0.5) +  
-  geom_line(data = new_data, aes(x = days_since_start, y = predicted_prob), color = "blue", size = 1) +
+  geom_line(data = mydata, aes(x = days_since_start, y = predicted_prob), color = "blue", size = 1) +
   labs(title = "Logistic Regression: Probability of Clinical Isolates Over Time",
        x = "Days Since Start",
        y = "Probability of Outcome (Yes = 1)") +
@@ -65,16 +65,21 @@ ggplot(mydata, aes(x = days_since_start, y = clinical_numeric)) +
 
 ```
 ```{r}
-ggplot(mydata, aes(x = days_since_start, fill = factor(clinical_numeric))) +  # Fill by outcome (0 or 1)
+p <- ggplot(mydata, aes(x = days_since_start, fill = factor(clinical_numeric))) +  # Fill by outcome (0 or 1)
   geom_histogram(position = "identity", 
                  alpha = 0.5, 
                  bins = 30, 
                  color = "black") +  # Standard histogram
-  labs(title = "Histogram of Outcomes Over Time",
+  labs(title = "Histogram of clinical isolates Over Time",
        x = "Days Since Start",
        y = "Count of Outcome (0 or 1)",
        fill = "Outcome") +
   theme_minimal()
+
+figure_file=here("results/figures","clinicalxtime.png")
+ggsave(filename=figure_file, plot = p, width = 8, height=6)
+```
+
 
 ```
 
