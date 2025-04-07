@@ -12,6 +12,9 @@ library(dplyr)
 library(skimr)
 library(ggplot2)
 library(tidymodels)
+library(lubridate)
+library(ranger)
+
 ```
 #Load in the data
 ```{r}
@@ -81,6 +84,99 @@ ggsave(filename=figure_file, plot = p, width = 8, height=6)
 ```
 
 
+#More advanced temporal analysis of clinical isolates. Remember that every clinical isolate is like a human case of Listeriosis.
+#For this analysis I will make some changes to my data by separating the time data into seasons.Winter is considered December, January and February; spring is March through May; summer is June through August; and fall or autumn is September through November.
+
+
+```{r}
+mydata <- mydata %>%
+  drop_na()%>%
+  mutate(
+    `Create date` = as.Date(`Create date`),
+    year = year(`Create date`),
+    day_of_year= yday(`Create date`),
+    week = week(`Create date`),
+    month = month(`Create date`),
+    season = case_when(
+      month %in% c(12, 1, 2)  ~ "Winter",
+      month %in% c(3, 4, 5)   ~ "Spring",
+      month %in% c(6, 7, 8)   ~ "Summer",
+      month %in% c(9, 10, 11) ~ "Fall"
+    ),
+    season = factor(season, levels = c("Winter", "Spring", "Summer", "Fall")),
+    `Isolation source` = factor(`Isolation source`)
+  )
 ```
 
+#Feature selection
+```{r}
+model1_data <- mydata %>%
+  select(`Isolation type`,year,month,day_of_year,week,season)
+```
+
+#Split the data
+```{r}
+set.seed(1234)
+data_split <- initial_split(model1_data, prop = 0.8, strata = `Isolation type`)
+train_data <-training(data_split)
+test_data <-testing(data_split)
+```
+#Create recipe
+```{r}
+rf_recipe <- recipe(`Isolation type` ~ month + year + day_of_year + week + season, data = train_data) %>%
+  step_dummy(all_nominal_predictors()) %>%
+  step_zv(all_predictors()) %>%
+  step_normalize(all_numeric_predictors())
+```
+
+#Define the model
+```{r}
+rf_mod <-rand_forest(trees = 150, min_n =5) %>%
+  set_mode("classification") %>%
+  set_engine("ranger")
+```
+Create workflow
+```{r}
+workflow1 <- workflow() %>%
+  add_model(rf_mod)%>%
+  add_recipe(rf_recipe)
+```
+#fit the random forest model
+```{r}
+fit1 <- workflow1 %>%
+  fit(data = train_data)
+```
+#Make predictions for evaluation
+```{r}
+predictions_rf <-fit1 %>%
+  predict(new_data = test_data) %>%
+  bind_cols(test_data)
+
+```
+```{r}
+#set isolation source as a factor
+predictions_rf <- predictions_rf %>%
+  mutate(`Isolation type` = as.factor(`Isolation type`))
+
+```
+
+#Run metrics to evaluate the model
+```{r}
+
+# Create a metric set for classification
+classification_metrics <- metric_set(accuracy, precision, recall, f_meas)
+
+# Now use it on your predictions
+metrics_rf <- predictions_rf %>%
+  classification_metrics(truth = `Isolation type`, estimate = .pred_class)
+
+```
+
+```{r}
+metrics_rf <- predictions_rf %>%
+  metrics(truth = `Isolation type`, estimate = .pred_class)
+print(metrics_rf)
+```
+#Plot the results of this model
+#Clean up some of the changes made to the data and add to processing file
 
