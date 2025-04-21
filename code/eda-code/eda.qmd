@@ -25,6 +25,20 @@ data_location <- here::here("data","processed-data","processeddata.rds")
 #load data
 mydata <- readRDS(data_location)
 ```
+#Creating an additional variable called "Isolation_source" This is different from the `Isolation Source` variable in that it will include food and not just list it under environmental/other
+```{r}
+mydata <- mydata %>%
+  mutate(
+    clinical = as.character(clinical),
+    food = as.character(food),
+    isolation_source = case_when(
+      clinical == "Yes" ~ "clinical",
+      food == "Yes" ~ "food",
+      TRUE ~ "environmental"
+    )
+  )
+
+```
 
 
 # Data exploration through tables
@@ -45,52 +59,92 @@ saveRDS(summary_df, file = summarytable_file)
 
 #Making a table for the clinical variable 
 ```{r}
-table(processeddata$clinical)
+table(mydata$clinical)
 ```
 #doing the same for food
 ```{r}
-table(processeddata$food)
-```
-#Now lets visualize these tables using bar graphs
-```{r}
-bar1 <- ggplot(mydata, aes(x = clinical)) + 
-  geom_bar(fill = "steelblue") + 
-  labs(title = "Yes/No Distribution", x = "Response", y = "Count") + 
-  theme_minimal()
-    
-
-
+table(mydata$food)
 ```
 ```{r}
-library(ggplot2)
-
-p1 <- ggplot(mydata, aes(x = food)) + 
-  geom_bar(fill = "orange") + 
-  labs(title = "Yes/No Distribution", x = "Response", y = "Count") + 
-  theme_minimal()
-figure_file=here("results/figures","foodisolatecount.png")
-ggsave(filename=figure_file, plot = p1, width = 8, height=6)
-
+table(mydata$isolation_source)
 ```
+
+
+
+#Now lets visualize these tables using bar graphs of counts for food clincial and env
+```{r}
+
+isolatetypes <- ggplot(mydata, aes(x = isolation_source)) +
+  geom_bar(fill = "seagreen") +
+  labs(title = "Isolation Source Distribution",
+       x = "Isolation Source",
+       y = "Count") +
+  theme_minimal()
+ print(isolatetypes)  
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/isolatetypes.png", plot = isolatetypes, width = 8, height = 6, dpi = 300)
+```
+#As we see here, clinical cases are rare but that does not take away from the fact that they are usually severe.
+```{r}
 #cross tabulation
-```{r}
 table(mydata$food, mydata$clinical)
 ```
 #We can also look at some distribution across the country since we have some state data
+
 ```{r}
 
-mydata %>%
-  filter(food == "Yes") %>%  # Keep only "Yes" cases
-  count(Location) %>%  # Count occurrences per location
-  ggplot(aes(x = Location, y = n)) +
-  geom_bar(stat = "identity", fill = "steelblue") + 
-  labs(title = "Count of food isolated listeria Cases Across Locations", 
-       x = "Location", 
-       y = "Count of Yes") + 
-  theme_minimal() +
-  theme(axis.text.x = element_text(size = 6,angle = 45, hjust = 1))  # Rotate x-axis labels for readability
-
+locations <- ggplot(
+  mydata %>% 
+    filter(food == "Yes", Location != "USA"),
+  aes(x = Location)
+) + 
+  geom_bar(fill = "steelblue") + 
+  labs(
+    title = "Count of Food-Isolated Listeria Cases Across Locations",
+    x = "Location",
+    y = "Count of Yes"
+  ) + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
+print(locations)
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/locations.png", plot = locations, width = 8, height = 6, dpi = 300)
 ```
+
+```{r}
+locations2 <- ggplot(mydata %>% filter(clinical == "Yes"), aes(x = Location)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Count of Clincally-Isolated Listeria Cases Across Locations",
+       x = "Location",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
+print(locations2)
+```
+#This only tells me that all cases of listeriosis were in the U.S. which i specified for so we wont use this graph.
+
+
+#The left most bar is USA as a whole as some entries do not report the specific state they are from, the rest are states and territories. We see that NY has more cases than other states
+```{r}
+sourcestate <- mydata %>%
+  filter(clinical == "Yes", !is.na(`Food origin`)) %>%  
+  count(`Food origin`) %>%  
+  ggplot(aes(x = `Food origin`, y = n)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(title = "Count of Clinically Isolated Listeria Sources by Food Origin",
+       x = "Food Origin",
+       y = "Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
+
+print(sourcestate)
+```
+
+
+
+```{r}
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/sourcestate.png", plot = sourcestate, width = 8, height = 6, dpi = 300)
+```
+#Based on this graph we see that many of the clinical cases are coming from foods produced in Sweden...interesting. maybe we can use food origin as a predictor as well.
+
 #The left most bar is USA as a whole as some entries do not report the specific state they are from, the rest are states and territories. We see that NY has more cases than other states
 
 #Some entries show the isolation source so lets make a boxplot showing the sources for some clinical isolates.
@@ -148,4 +202,54 @@ mydata %>%
 #We see here that the most food isolates for listeria monocytogenes are found in Ready To Eat products, that is a term used by Food Safety and Inspection Service to describe any food products that do not require cooking or sterilization to safely consume.
 
 
+#plot of food isolates and clinical isolates across 10 years
+```{r}
+library(tidyverse)
+library(lubridate)
+
+# Step 1: Prepare the data — monthly counts
+monthly_counts <- mydata %>%
+  mutate(month = floor_date(`Create date`, "month")) %>%
+  group_by(month) %>%
+  summarize(
+    food_count = sum(food == "Yes"),
+    clinical_count = sum(clinical == "Yes")
+  ) %>%
+  ungroup()
+
+# Step 2: Convert to long format for plotting
+monthly_long <- monthly_counts %>%
+  pivot_longer(cols = c(food_count, clinical_count),
+               names_to = "source_type",
+               values_to = "count")
+
+# Step 3: Plot
+ggplot(monthly_long, aes(x = month, y = count, color = source_type)) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "Monthly Salmonella Isolate Counts by Source",
+    x = "Month",
+    y = "Isolate Count",
+    color = "Source Type"
+  ) +
+  scale_color_manual(values = c("food_count" = "forestgreen", "clinical_count" = "firebrick")) +
+  theme_minimal()
+```
+
+
+```{r}
+Isolatecounts <- ggplot(monthly_long, aes(x = month, y = count, fill = source_type)) +
+  geom_bar(stat = "identity", position = "stack") +
+  labs(
+    title = "Monthly Salmonella Isolate Counts by Source (Stacked Bars)",
+    x = "Month",
+    y = "Isolate Count",
+    fill = "Source Type"
+  ) +
+  scale_fill_manual(values = c("food_count" = "forestgreen", "clinical_count" = "firebrick")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/isolatecounts.png", plot = Isolatecounts, width = 8, height = 6, dpi = 300)
+print(Isolatecounts)
+```
 

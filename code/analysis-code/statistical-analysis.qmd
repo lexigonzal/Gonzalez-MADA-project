@@ -14,7 +14,9 @@ library(ggplot2)
 library(tidymodels)
 library(lubridate)
 library(ranger)
-
+library(parsnip)
+library(poissonreg)
+library(randomForest)
 ```
 #Load in the data
 ```{r}
@@ -55,36 +57,16 @@ model <- glm(clinical_numeric ~ days_since_start, data = mydata, family = binomi
 summary(model)
 
 ```
-```{r}
-
-ggplot(mydata, aes(x = days_since_start, y = clinical_numeric)) +
-  geom_jitter(height = 0.05, width = 5, alpha = 0.5) +  
-  geom_line(data = mydata, aes(x = days_since_start, y = predicted_prob), color = "blue", size = 1) +
-  labs(title = "Logistic Regression: Probability of Clinical Isolates Over Time",
-       x = "Days Since Start",
-       y = "Probability of Outcome (Yes = 1)") +
-  theme_minimal()
 
 
-```
-```{r}
-p <- ggplot(mydata, aes(x = days_since_start, fill = factor(clinical_numeric))) +  # Fill by outcome (0 or 1)
-  geom_histogram(position = "identity", 
-                 alpha = 0.5, 
-                 bins = 30, 
-                 color = "black") +  # Standard histogram
-  labs(title = "Histogram of clinical isolates Over Time",
-       x = "Days Since Start",
-       y = "Count of Outcome (0 or 1)",
-       fill = "Outcome") +
-  theme_minimal()
-
-figure_file=here("results/figures","clinicalxtime.png")
-ggsave(filename=figure_file, plot = p, width = 8, height=6)
-```
 
 
-#More advanced temporal analysis of clinical isolates. Remember that every clinical isolate is like a human case of Listeriosis.
+
+
+
+
+
+# temporal analysis of clinical isolates. Remember that every clinical isolate is like a human case of Listeriosis.
 #For this analysis I will make some changes to my data by separating the time data into seasons.Winter is considered December, January and February; spring is March through May; summer is June through August; and fall or autumn is September through November.
 
 
@@ -133,7 +115,7 @@ rf_recipe <- recipe(`Isolation type` ~ month + year + day_of_year + week + seaso
 ```{r}
 rf_mod <-rand_forest(trees = 150, min_n =5) %>%
   set_mode("classification") %>%
-  set_engine("ranger")
+  set_engine("ranger",importance="impurity")
 ```
 Create workflow
 ```{r}
@@ -162,11 +144,12 @@ predictions_rf <- predictions_rf %>%
 
 #Run metrics to evaluate the model
 ```{r}
-
 # Create a metric set for classification
 classification_metrics <- metric_set(accuracy, precision, recall, f_meas)
+```
 
-# Now use it on your predictions
+```{r}
+#  use it on predictions
 metrics_rf <- predictions_rf %>%
   classification_metrics(truth = `Isolation type`, estimate = .pred_class)
 
@@ -178,5 +161,377 @@ metrics_rf <- predictions_rf %>%
 print(metrics_rf)
 ```
 #Plot the results of this model
-#Clean up some of the changes made to the data and add to processing file
+
+
+```{r}
+library(vip)  # for variable importance plot
+
+# Extract the fitted model from the workflow
+rf_fit <- extract_fit_parsnip(fit1)
+
+# Plot variable importance
+vip(rf_fit$fit)
+
+```
+
+
+#Poisson modeling using month
+
+```{r}
+# Create monthly clinical counts
+monthly_counts <- mydata %>%
+  filter(clinical == "Yes") %>%
+  mutate(month = floor_date(`Create date`, "month")) %>%
+  group_by(month) %>%
+  summarize(clinical_count = n()) %>%
+  ungroup()
+#filling in gaps with 0
+monthly_counts <- monthly_counts %>%
+  complete(month = seq.Date(min(month), max(month), by = "month"),
+           fill = list(clinical_count = 0))
+#Feature engineering, extracting the month from the data
+monthly_counts <- monthly_counts %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+```
+
+```{r}
+library(tidymodels)
+library(parsnip)
+#Splitting the data 
+set.seed(123)
+data_split2 <- initial_time_split(monthly_counts, prop = 0.8)
+train_data2 <- training(data_split2)
+test_data2  <- testing(data_split2)
+
+```
+```{r}
+#create a recipe 
+poisson_recipe <- recipe(clinical_count ~ month_name, data = train_data2) %>%
+  step_dummy(all_nominal_predictors())
+
+```
+```{r}
+#Select the model
+poisson_model <- 
+  poisson_reg(
+    mode = "regression",
+    penalty = NULL,
+    mixture = NULL,
+    engine ="glm"
+  )
+
+```
+```{r}
+#Create a workflow 
+library(poissonreg)
+poisson_wf <-workflow() %>%
+  add_model(poisson_model) %>%
+  add_recipe(poisson_recipe)
+```
+```{r}
+#fit the model
+poisson_fit <- poisson_wf %>%
+  fit(data = train_data2)
+```
+```{r}
+#make predictions
+predictions <- predict(poisson_fit, new_data = train_data2) %>%
+  bind_cols(train_data2)
+metrics(predictions, truth = clinical_count, estimate =.pred)
+```
+#Visualize results
+```{r}
+poisson_seasonal <- ggplot(predictions, aes(x = month)) +
+  geom_line(aes(y = clinical_count), color = "black", linetype = "dashed") +
+  geom_line(aes(y = .pred), color = "blue") +
+  labs(title = "Predicted vs Actual Monthly Clinical Isolate Counts",
+       y = "Clinical Count")
+print(poisson_seasonal)
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/poisson_seasonal.png", plot = poisson_seasonal, width = 8, height = 6, dpi = 300)
+```
+#Predict future isolate counts based on seasonality
+```{r}
+last_month <-max(monthly_counts$month)
+```
+
+
+```{r}
+future_months <- tibble(
+  month = seq.Date(from = last_month %m+% months(1),by = "month", length.out = 12)
+)%>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered= FALSE))
+```
+
+```{r}
+#make predictions
+future_predictions <- predict(poisson_fit, new_data = future_months)%>%
+  bind_cols(future_months)
+```
+```{r}
+#visualize
+# Combine historical + future for plotting
+combined_months<- bind_rows(
+  monthly_counts %>% select(month, clinical_count) %>% mutate(source = "Actual"),
+  future_predictions %>% rename(clinical_count = .pred) %>% mutate(source = "Forecast")
+)
+
+# Plot
+seasonalpreds <- ggplot(combined_data, aes(x = month, y = clinical_count, color = source)) +
+  geom_line() +
+  labs(title = "Actual and Forecasted Clinical Isolate Counts",
+       y = "Clinical Count",
+       x = "Month") +
+  scale_color_manual(values = c("Actual" = "black", "Forecast" = "blue")) +
+  theme_minimal()
+print(seasonalpreds)
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/seasonalpreds.png", plot = seasonalpreds, width = 8, height = 6, dpi = 300)
+```
+
+```{r}
+
+
+# 1. Get the last month from your historical data
+last_month <- max(monthly_counts$month)
+
+# 2. Create the next 12 months
+future_months <- tibble(
+  month = seq.Date(from = last_month %m+% months(1), by = "month", length.out = 12)
+) %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# 3. Make predictions using your Poisson model (or other model)
+future_predictions <- predict(poisson_fit, new_data = future_months) %>%
+  bind_cols(future_months)
+
+# 4. Combine historical and forecast data
+combined_months <- bind_rows(
+  monthly_counts %>% 
+    select(month, clinical_count) %>% 
+    mutate(source = "Actual"),
+  future_predictions %>% 
+    rename(clinical_count = .pred) %>% 
+    mutate(source = "Forecast")
+)
+
+# 5. Plot
+seasonalpreds <- ggplot(combined_months, aes(x = month, y = clinical_count, color = source)) +
+  geom_line(size = 1.2) +
+  labs(
+    title = "Actual and Forecasted Clinical Isolate Counts",
+    y = "Clinical Count",
+    x = "Month"
+  ) +
+  scale_color_manual(values = c("Actual" = "black", "Forecast" = "blue")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# 6. Show plot
+print(seasonalpreds)
+
+# 7. Save to file
+ggsave(
+  "/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/seasonalpreds.png", 
+  plot = seasonalpreds, width = 8, height = 6
+
+```
+
+```{r}
+library(mgcv)
+gam_model <- gam(clinical_count ~ s(day_of_year), family = poisson(), data = daily_counts)
+plot(gam_model)
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/gam_model.png", plot = gam_model, width = 8, height = 6, dpi = 300)
+```
+
+
+```{r}
+# Load necessary library
+library(mgcv)
+library(gratia) # for tidy ggplot GAM visualizations
+
+# Example: Create ggplot-style plot from your GAM model
+gam_plot <- draw(gam_model)  # `gam_model` is your fitted model
+
+# Now save it
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/gam_model.png",
+       plot = gam_plot, width = 8, height = 6, dpi = 300)
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+```{r}
+
+#  Split the data into training and testing sets
+set.seed(123)
+data_split <- initial_split(monthly_counts, prop = 0.8)
+train_data <- training(data_split)
+test_data <- testing(data_split)
+
+#  Define the recipe (clinical_count predicted by food_count)
+poisson_recipe <- recipe(clinical_count ~ food_count, data = train_data)
+
+# Define the Poisson regression model
+poisson_model <- poisson_reg(mode = "regression", engine = "glm")
+
+#  Create a workflow 
+poisson_wf <- workflow() %>%
+  add_recipe(poisson_recipe) %>%
+  add_model(poisson_model)
+
+#  Fit the model
+poisson_fit <- poisson_wf %>%
+  fit(data = train_data)
+
+# Make predictions on the training data
+predictions <- predict(poisson_fit, new_data = train_data) %>%
+  bind_cols(train_data)
+
+#  Evaluate the model 
+isolate_metrics <- metrics(predictions, truth = clinical_count, estimate = .pred)
+print(isolate_metrics)
+
+# Visualize the results
+ggplot(predictions, aes(x = month)) +
+  geom_col(aes(y = clinical_count), fill = "lightgray", alpha = 0.8) +
+  geom_line(aes(y = .pred), color = "blue", size = 1) +
+  labs(
+    title = "Poisson Regression: Predicting Clinical Isolates from Food Isolates",
+    y = "Clinical Isolate Count",
+    x = "Month"
+  ) +
+  theme_minimal()
+```
+#Chart showing likelihood
+```{r}
+
+
+```
+
+
+
+#Now I want to do one more advanced statistical analysis. This analysis will utilize the counts of clinical and counts of food isolates each year and see if the amount of clinical isolates can be predicted by the amount of food isolates. This purpose of this analysis is to see if federal reguulations are doing a good job of preventing illness.
+
+#put my food and clinical variable into counts and group by year
+
+
+```{r}
+monthly_counts2 <- mydata %>%
+  mutate(month = floor_date(`Create date`, "month")) %>%
+  count(month, isolation_source) %>%
+  tidyr::pivot_wider(names_from = isolation_source, values_from = n, values_fill = 0)
+```
+
+```{r}
+set.seed(123)  # for reproducibility
+
+rf_model <- randomForest(
+  clinical ~ food + environmental,
+  data = monthly_counts2,
+  ntree = 500,          # number of trees
+  importance = TRUE     # track variable importance
+)
+print(rf_model)
+
+```
+
+
+
+
+```{r}
+#model_predict_clinical <- lm(clinical ~ food + environmental, data = monthly_counts2)
+#summary(model)
+
+
+```{r}
+
+```
+
+`
+#Visualzing the future
+```{r}
+# Suppose you created this:
+future_data <- data.frame(
+  month = as.Date(c("2025-02-01","2025-03-01","2025-04-01","2025-05-01", "2025-06-01", "2025-07-01","2025-08-01","2025-09-01","2025-10-01","2025-11-01","2025-12-01")),
+  food = c(300,220, 180, 250,140,122,116,235,96,175,225),
+  environmental = c(350,150, 170, 200,220,140,267,178,155,200,280)
+)
+```
+
+
+```{r}
+# Predict clinical isolates
+future_data$Predicted_Clinical <- predict(rf_model, newdata = future_data)
+```
+
+
+```{r}
+# Predict clinical isolates for future months
+future_data$Predicted_Clinical <- predict(rf_model, newdata = future_data)
+
+# Combine with past data (no predicted clinicals in the past, so we set it to NA)
+combined_plot_data <- monthly_counts2 %>%
+  select(month, clinical) %>%
+  mutate(Predicted_Clinical = NA,
+         Source = "Historical") %>%
+  bind_rows(
+    future_data %>%
+      transmute(month, clinical = NA, Predicted_Clinical, Source = "Forecast")
+  )
+
+
+# Filter combined_plot_data for the last 3 years
+recent_data <- combined_plot_data %>%
+  filter(month >= (max(month) %m-% years(3)))
+
+# Plot
+ggplot(recent_data, aes(x = month)) +
+  geom_line(aes(y = Predicted_Clinical, color = Source), size = 1.2, linetype = "dashed") +
+  geom_line(data = recent_data %>% filter(!is.na(clinical)),
+            aes(y = clinical, color = "Observed"), size = 1) +
+  scale_color_manual(values = c("Observed" = "steelblue", "Historical" = "tomato", "Forecast" = "forestgreen")) +
+  labs(title = "Observed and Forecasted Clinical Isolates (Past 3 Years)",
+       x = "Month",
+       y = "Count",
+       color = "Legend") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+```{r}
+# Create new data (adjust as needed)
+new_data <- data.frame(food = c(200), environmental = c(150))
+
+# Predict clinical isolates
+predict(model_predict_clinical, newdata = new_data)
+
+```
+#Machine Learning since this was just a simple linear regression
+#Random forest
+```{r}
+#set seed and split data
+set.seed(123)
+data_split3 <- initial_split(model_data, prop = 0.8)
+train_data3 <- training(data_split3)
+test_data3 <- testing(data_split3)
+
+```
 

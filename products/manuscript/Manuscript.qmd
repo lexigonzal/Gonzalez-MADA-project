@@ -1,5 +1,5 @@
 ---
-title: "Exploring clinical and non-clinical(food) Listeria monocytogenes isolates "
+title: "Exploring Patterns in Clinical and Non-Clinical Listeria monocytogenes Isolates "
 author: "Alexis Gonzalez"
 format:
   docx:
@@ -28,16 +28,16 @@ library(knitr)
 
 # Summary/Abstract
 
-Will complete at the end
+Listeria monocytogenes is major food born pathogen. Though infections are rare, L.monocytogenes has the highest hospitalization rate and death rate of the common food borne illnesses. This pathogen can proliferate in a number of hosts and climates. Understanding temporal and source relationships may allow the public to be better informed on how to protect themselves. This study used whole-genome sequencing data from the NCBI Pathogen Detection database (2010--2024) to explore trends in food, clinical, and environmental isolates of *L. monocytogenes*. We conducted exploratory data analysis to assess the frequency and geographic distribution of isolates. Poisson and logistic regression models were applied to evaluate the effect of seasonality on clinical isolate occurrence. 33,264 isolates were analyzed, with a majority of them being environmental. Geographic analysis concluded that New York state contributed a large percentage of food isolates, and many illness-causing foods originated in Sweden. Statistical modeling showed a consistent seasonal trends. Random forest models concluded that days of the year were an important factor and Poisson regression allowed for prediction of future clinical isolates based on the number of environmental and food isolates, though the association was weak. These findings suggest that utilizing temporal relationships may be effective in predicting potential outbreaks.
 
 {{< pagebreak >}}
 
 # 1. Introduction
 
-Listeria monocytogenes is a ubiquitous, gram-positive, intracellular pathogen renowned for its adaptability and resilience\[5\]. This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[10\]. While immunocompetent individuals may only experience mild gastroenteritis, disseminated infection in the immunocompromised has a lethality rate of \~30%\[8\].  Listeriosis causes 1,600 infections and 260 deaths each year with a 95% hospitalization rate. The United States Department of Agriculture lists 6 foods that are at high risks for L.monocytogenes contamination; unpasteurized dairy products, soft cheeses, raw fruits and vegetables (particularly sprouts, enoki mushrooms, and melons), Ready-To-Eat deli meats and hot dogs, refrigerated pate, and refrigerated smoked seafood. Listeria contamination typically happens post-lethality which exposes a ready-to-eat product to a processing environment after a form of lethality treatment has taken place. Post lethality processing environments can be deli slicers, submersion in a brine solution, meat encassing, bagging or packaging. The USDA recommends all establishments to take part in additional post lethality treatment such as antimicrobial coatings, pasteurization, or chemical or physical sanitation of equipment. Sanitation tends to be the more cost effective option for many establishments but, due to incorrect sanitation practices and L.monocytogenes robust bio-film formation capabilities sanitation does not always prevent contamination. Outbreaks have been seen in a range of products in recent years. From 2023 to 2025 there have been over 10 multi-state listeria outbreaks. The most recent being an outbreak beginning February 22, 2025 in frozen supplement shakes. These shakes were distributed among institutional facilities such as long term care facilities and hospitals. This outbreak has resulted in 38 cases, 37 hospitalizations, and 12 deaths so far as this investigation is ongoing as of April 2025. 
+Listeria monocytogenes is a ubiquitous, gram-positive, intracellular pathogen renowned for its adaptability and resilience\[5\]. This bacterium can be found in a wide range of environments such as soil, water, animals, and vegetation. Due to its ability to proliferate in food products and low temperatures, it is considered a major food-borne illness. The ingestion of Listeria-infected food may lead to listeriosis, a gastrointestinal illness that causes vomiting, diarrhea, and even death. It is of even greater concern in pregnant individuals, as its forceful invasion tactics allow the bacterium to cross the placental barrier, infecting the fetus; this can lead to miscarriages and stillbirths\[10\]. While immunocompetent individuals may only experience mild gastroenteritis, disseminated infection in the immunocompromised has a lethality rate of \~30%\[8\].  Listeriosis causes 1,600 infections and 260 deaths each year with a 95% hospitalization rate. The United States Department of Agriculture lists 6 foods that are at high risks for L.monocytogenes contamination; unpasteurized dairy products, soft cheeses, raw fruits and vegetables (particularly sprouts, enoki mushrooms, and melons), Ready-To-Eat deli meats and hot dogs, refrigerated pate, and refrigerated smoked seafood. Listeria contamination typically happens post-lethality which exposes a ready-to-eat product to a processing environment after a form of lethality treatment has taken place. Post lethality processing environments can be deli slicers, submersion in a brine solution, meat encasing, bagging or packaging. The USDA recommends all establishments to take part in additional post lethality treatment such as antimicrobial coatings, pasteurization, or chemical or physical sanitation of equipment. Sanitation tends to be the more cost effective option for many establishments but, due to incorrect sanitation practices and L.monocytogenes robust bio-film formation capabilities sanitation does not always prevent contamination. Outbreaks have been seen in a range of products in recent years. From 2023 to 2025 there have been over 10 multi-state listeria outbreaks. The most recent being an outbreak beginning February 22, 2025 in frozen supplement shakes. These shakes were distributed among institutional facilities such as long term care facilities and hospitals. This outbreak has resulted in 38 cases, 37 hospitalizations, and 12 deaths so far as this investigation is ongoing as of April 2025. 
 
 \
-This study aims to investigate trends in listeria isolates found in clinical and non-clinical samples in efforts to predict cases.  This study will investigate time of a year and number of non-clinical isolates as a predictor for clinical isolates, and food type as a predictor for food isolates , non-clinical isolates that originate in food products. The data source being used to conduct this study is the National Center for Biotechnology Information's Pathogen Detection browser. Pathogen Detection is a culmination of pathogen genomic sequences from federal, state, private, and foreign laboratories. It is utilized constantly by public health officials,epidemiologists, and scientists to identify chains of transmission. The new isolates are analyzed in real time to aid in that identification by developing clusters. Listeria monocytogenes is a nationally notifiable disease so, many laboratories opt to share their data nationally through the Pathogen Detection Browser. By utilizing the most up to date data and identifying trends, this study hopes to provide information to form new guidelines on protecting the public from Listeriosis infection.
+This study aims to investigate trends in listeria isolates found in clinical and non-clinical samples in efforts to predict cases.  This study will investigate time of year and number of non-clinical isolates as a predictor for clinical isolates, and food type as a predictor for food isolates , non-clinical isolates that originate in food products. The data source being used to conduct this study is the National Center for Biotechnology Information's Pathogen Detection browser. Pathogen Detection is a culmination of pathogen genomic sequences from federal, state, private, and foreign laboratories. It is utilized constantly by public health officials,epidemiologists, and scientists to identify chains of transmission. The new isolates are analyzed in real time to aid in that identification by developing clusters. Listeria monocytogenes is a nationally notifiable disease so, many laboratories opt to share their data nationally through the Pathogen Detection Browser. By utilizing the most up to date data and identifying trends, this study hopes to provide information to form new guidelines on protecting the public from Listeriosis infection.
 
 {{< pagebreak >}}
 
@@ -45,52 +45,77 @@ This study aims to investigate trends in listeria isolates found in clinical and
 
 This study utilized publicly available data through NCBI Pathogen Detection. Before downloading the data from the Isolate Browser, the data was filtered to only include Listeria monocytogenes isolates found in or originating in the United States of America. This resulted in 33,264 L.monocytogenes isolates. Once loaded into R the data set was minimized further by selecting isolates that were entered between January 1, 2010 and December 31, 2024. Several variables were removed from the dataset as they did not contribute to the analysis. These were isolate identification and clustering data such as Serovar, Biosample number, Assembly, Min-same and Min-diff SNPs, computed types, and a variable called ...18 ,presumably referring to 18s primers, that contained no data.
 
+Two additional columns were created for exploratory analysis to separate clinical and non clinical isolates from the "Isolation type variable". Entries for the "Clinical" column were coded as "Yes" if the entry for "Isolation type" was clinical. All non-clinical isolates were coded as "environmental/other" so the "Isolation Source" column was utilized to create the "Food" column. All isolates that came from various meat and dairy, and produce food sources were coded as "Yes". Additional columns created were "days_since_start" which converted all dates in the selected time period into days since the first date in the data set. A column for year, day, month, and season were also created for statistical analysis.
+
+For temporal analysis was conducted using poisson regression. All machine learning models were conducted using the tidymodels workflow. Specific packages for poisson modeling were parsnip and poissonreg.
+
 {{< pagebreak >}}
 
 # Results
 
-## Exploratory/Descriptive analysis
+### Exploratory Data Analysis
+
+Exploratory data analysis started with visualizing the total counts of food, clinical and environmental isolates in the 10 year time period. It is seen in *figure* 1 that food isolates account for the smallest proportion of isolated *Listeria monocytogenes* at 10,284. Clinical isolates fall slightly ahead at 10,319, with a difference of 35 isolates in the 10 year period. Environmental samples dominate the isolate types at 12,777. To get a visualization of where food isolates were coming from a bar graph was made showing the location of origin of each food isolate. Some isolates only logged "USA" as their origin so those were removed from visualization. The majority of food sampled were originate in New York state, followed by Washington, Arizona, Florida, and Texas. The 3rd bar graph *figure 3* shows the origin of clinical cases. This means the origin of the source of infection, likely a food product. An overwhelming percentage of originated in Sweden, followed by Texas and New York.
 
 ```{r}
-knitr::include_graphics(here("results/figures", "foodisolatecount.png"))
+knitr::include_graphics(here("results/figures", "isolatetypes.png"))
 ```
 
 ```{r}
-
-```
-
-## Basic statistical analysis
-
-```{r}
-
-```
-
-## Full analysis
-
-#Need to insert figures
-
-```{r}
-knitr::include_graphics(here("results/figures", "clinicalxtime.png"))
-
+knitr::include_graphics(here("results/figures","locations.png"))
 ```
 
 ```{r}
-#| label: tbl-resulttable2
-#| tbl-cap: "Linear model fit table."...................;;;;;;;;;;;;;;;::::::::::::::::P
-#| echo: FALSE
-resulttable2 = readRDS(here("results","tables","resulttable2.rds"))
-knitr::kable(resulttable2)
+knitr:: include_graphics(here("results/figures", "sourcestate.png"))
+```
+
+```{r}
+knitr::include_graphics(here("results/figures", "isolatecounts.png"))
+```
+
+## Temporal Analysis
+
+*Time of year or "season" as a predictor for clinical Listeria monocytogenes isolates*
+
+The first goal of this analysis is to find any seasonal patterns in *Listeria* infections and *Listeria* contaminated food items.
+
+```{r}
+knitr::include_graphics(here("results/figures", "gam_model.png"))
+```
+
+```{r}
+knitr::include_graphics(here("results/figures", "seasonalpreds.png"))
+```
+
+```{r}
+knitr::include_graphics(here("results/figures", "poisson_seasonal.png"))
 ```
 
 {{< pagebreak >}}
+
+## Logistic Regression
 
 # Discussion
 
 ## Summary and Interpretation
 
+This study examined temporal and source-based trends in Listeria monocytogenes isolates reported in the United States from 2010 to 2024 using publicly available data from the NCBI Pathogen Detection database. Isolates were classified into clinical, environmental, and food-related categories to assess patterns and predictors of clinical infections.
+
+Exploratory analysis showed that environmental samples were the most frequently reported isolate type, which supports previous findings that L. monocytogenes is widespread in processing environments and natural reservoirs. Clinical and food isolates were nearly equal in count, suggesting a potential link between food exposure and clinical outcomes.
+
+Temporal modeling using Poisson regression revealed a seasonal pattern in clinical isolates, with elevated counts in warmer months---especially summer. This pattern may reflect greater bacterial growth in food products stored at warmer temperatures, seasonal shifts in food handling practices, or increased consumption of ready-to-eat items during these months. Logistic regression analysis reinforced these findings, highlighting seasonality as a potential predictor of clinical listeriosis.
+
+These results align with prior epidemiological data suggesting that Listeria infections may follow seasonal trends, which has important implications for food safety monitoring and public health messaging. Summer could be a critical time for intensified surveillance and intervention efforts.
+
 ## Strengths and Limitations
 
+While the data set contains thousands of isolates, the amount of clinical isolates is quite small due to the rarity of infection. This made statistical analysis complicated as some months during the 10 year period experienced 0 cases of listeriosis. There also were not many predictors to work with from the raw data. Isolation source would have been an association to explore but, the isolation sources are entered manually bu researchers and inspectors so there is no standardization in nomenclature of sources. For example, one source can say "hot-dog" while another says "premium hot-dog". More spatial analysis could have been done if more entries specify the state of origin. Many had just "USA" or NA. This is also not standardized for NCBI and can be entered however the submitter pleases.
+
 ## Conclusions
+
+This study identified seasonal patterns in clinical Listeria monocytogenes isolates, with potential implications for timing surveillance and prevention strategies. While environmental and food isolates remain a significant reservoir for transmission, more refined metadata and consistent data entry practices are essential for improving future predictive models.
+
+Future research should focus on expanding spatial analysis, refining source categorization through natural language processing, and incorporating additional predictors such as food recall data or consumer behavior trends. With enhanced data quality and analytical tools, real-time surveillance systems can be better leveraged to prevent and control outbreaks of listeriosis.
 
 {{< pagebreak >}}
 
