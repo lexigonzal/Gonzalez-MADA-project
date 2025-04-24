@@ -1,3 +1,4 @@
 # analysis-code
 
-This folder contains  an R script with a bit of a statistical analysis. This is only implemented as an R script, no Quarto version. 
+This folder contains a quarto file with all statistical analysis code. There are changes to variables so please run the code in order. 
+Make sure proccessing file and eda file have been ran prior to running this code.

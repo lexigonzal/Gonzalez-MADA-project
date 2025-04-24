@@ -332,7 +332,7 @@ print(seasonalpreds)
 # 7. Save to file
 ggsave(
   "/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/seasonalpreds.png", 
-  plot = seasonalpreds, width = 8, height = 6
+  plot = seasonalpreds, width = 8, height = 6)
 
 ```
 
@@ -340,7 +340,6 @@ ggsave(
 library(mgcv)
 gam_model <- gam(clinical_count ~ s(day_of_year), family = poisson(), data = daily_counts)
 plot(gam_model)
-ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/gam_model.png", plot = gam_model, width = 8, height = 6, dpi = 300)
 ```
 
 
