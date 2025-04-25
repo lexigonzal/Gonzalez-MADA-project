@@ -1,0 +1,132 @@
+---
+title: Review of Alexis Gonzalez's MADA Project
+author: Vincent Nguyen
+date: 4/22/2025
+format: 
+  html:
+    toc: true
+    toc-depth: 3
+    number-sections: true
+---
+
+# Overview
+
+Title of project: Exploring Patterns in Clinical and Non-Clinical Listeria monocytogenes Isolates
+
+Name of project author(s): Alexis Gonzalez
+
+Name of project reviewer: Vincent Nguyen
+
+## Background, Context and Motivation
+### Feedback and Comments
+
+The introductory paragraph greatly contextualizes the project and its aims. I understand the research aims and feel it has a great tangible impact. The introduction is also well researched and gives a scope of how serious listeria infections are. Perhaps a summation of similar previous literature can be implemented to enhance the writing further.
+
+### Summary assessment (PICK ONE, DELETE THE OTHERS)
+* strong contextualization and motivation
+
+
+## Question description
+### Feedback and Comments
+
+The research hypothesis is clearly stated and it is clear what variables are important in this analysis. The hypothesis is reasonable and the data source is explained in context with the hypothesis.
+
+### Summary assessment
+* question/hypotheses fully clear
+
+
+## Data description
+### Feedback and Comments
+
+The data and its source are well described. The data structure is also explained and some of the filtering done to it. I will note that the README files could use some updating to help explain to people looking at the files.
+
+### Summary assessment
+* source and overall structure of data well explained
+
+
+## Data wrangling and exploratory analysis
+### Feedback and Comments
+
+The data cleaning makes sense and is intuitive. It is not super complex and is explained. Counts and distribution histograms are plotted and help describe the data further. Some of the axes are hard to read, specifically the second figure. Also captions are not attached to the plots. Regardless, eda is intuitve and helps contextualize the analysis.
+
+### Summary assessment
+* essentially no weaknesses in wrangling and exploratory component
+
+
+
+## Appropriateness of Analysis
+Were the analysis methods appropriate for the data? Was the analysis done properly? Were different components of the analysis (e.g. performance measure, variable selection, data pre-processing, model evaluation) done in the best way possible and explained well?
+
+### Feedback and Comments
+
+The use of several modeling techniques adds to the robustness of the analysis. Additionally, the models are appropriately used are logically sound. I will note some issues. Lines 39-43 seem to throw up errors. Also, while I am unsure if this is proper workflow, checking some assumptions (like overdispersion for poisson) or adding justifications before model selection could help improve robustness as well.
+
+### Summary assessment
+* strong and reasonable analysis
+
+## Presentation
+How well are results presented? Are tables and figures easy to read and understand? Are the main figures/tables publication level quality? 
+
+### Feedback and Comments
+
+Graphs are aesthetically pleasing but some labels can be hard to read. Additionally, there is a blank picture in "gam_model". Also, while a slight thing, I think choosing a cohesive color palette could make things more consistent throughout the manuscript.
+
+### Summary assessment
+* results are very well presented
+
+
+## Discussion/Conclusions
+Are the study findings properly discussed? Are strengths and limitations acknowledged? Are findings interpreted properly?
+
+### Feedback and Comments
+
+The findings are well discussed and limitations are well acknowledged. I think the results section is missing in my version of the repo but from what I can tell, it seems reasonable. Results from the random forest modeling should be implemented as well.
+
+### Summary assessment
+* strong, complete and clear discussion
+
+# Overall project content evaluation
+## Structure
+Is the project well structured? Are files in well labeled folders? Do files have reasonable names? Are all "junk" files not needed for analysis/reproduction removed? By just looking at files and folders, can you get an idea of how things fit together?
+
+### Feedback and Comments
+
+There are some useless files, specificallly, in the assests, products, and results sections of the repository. Additionally, some READMEs are not updated in my revision of the repo.
+
+### Summary assessment
+* mostly clear, but some confusing parts (e.g. useless files, things in the wrong folders)
+
+
+## Documentation 
+How well is the project documented? Are you able to understand each step of the whole analysis, each decision that was made, and each line of code? Is enough information provided as comments in code or as part of Rmd files? 
+
+### Feedback and Comments
+
+The code has a great presence of comments throughout. I do think some comments could improve in explaining the intent of the code beyond just its function. Additionally, some of the spacing is odd.
+
+### Summary assessment
+* decently documented with some gaps
+
+## Reproducibility
+### Feedback and Comments
+
+The code is reproducible, however, there is use of absolute paths in some of the figure saving in statistical-analysis.qmd. Additionally, some code straight up does not work but I imagine this will be smoothed over in later revisions. Beyond just a few coding errors, the code looks reasonably reproducible, however, there are redudant files in the code folder. This could make it a bit harder to reproduce more.
+
+
+### Summary assessment
+* small parts not reproducible or required manual intervention 
+
+
+
+## Thoroughness
+### Feedback and Comments
+
+The use of multiple models is a great strength of the analysis. Additionally, the consideration of temporal patterns is also a great way to capture time-based and seasonality trends. I believe the analysis was reasonablly well done and models are logically sound. I do think some assumptions should be checked and possibly residual plots. Also, model comparison metrics would bolster the analysis as well. Also, the discussion could have more fleshed out results regarding the modeling results.
+
+### Summary assessment
+* decent level of thoroughness
+
+
+
+
+
