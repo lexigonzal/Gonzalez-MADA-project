@@ -14,6 +14,7 @@ csl: ../../assets/american-journal-of-epidemiology.csl
 # load a few R packages
 library(here)
 library(knitr)
+library(htmltools)
 ```
 
 **Authors**
@@ -47,7 +48,9 @@ This study utilized publicly available data through NCBI Pathogen Detection. Bef
 
 Two additional columns were created for exploratory analysis to separate clinical and non clinical isolates from the "Isolation type variable". Entries for the "Clinical" column were coded as "Yes" if the entry for "Isolation type" was clinical. All non-clinical isolates were coded as "environmental/other" so the "Isolation Source" column was utilized to create the "Food" column. All isolates that came from various meat and dairy, and produce food sources were coded as "Yes". Additional columns created were "days_since_start" which converted all dates in the selected time period into days since the first date in the data set. A column for year, day, month, and season were also created for statistical analysis.
 
-For temporal analysis was conducted using poisson regression. All machine learning models were conducted using the tidymodels workflow. Specific packages for poisson modeling were parsnip and poissonreg.
+Temporal analysis was first visualized using
+
+conducted using poisson regression. All machine learning models were conducted using the tidymodels workflow. Specific packages for poisson modeling were parsnip and poissonreg.
 
 {{< pagebreak >}}
 
@@ -56,6 +59,10 @@ For temporal analysis was conducted using poisson regression. All machine learni
 ### Exploratory Data Analysis
 
 Exploratory data analysis started with visualizing the total counts of food, clinical and environmental isolates in the 10 year time period. It is seen in *figure* 1 that food isolates account for the smallest proportion of isolated *Listeria monocytogenes* at 10,284. Clinical isolates fall slightly ahead at 10,319, with a difference of 35 isolates in the 10 year period. Environmental samples dominate the isolate types at 12,777. To get a visualization of where food isolates were coming from a bar graph was made showing the location of origin of each food isolate. Some isolates only logged "USA" as their origin so those were removed from visualization. The majority of food sampled were originate in New York state, followed by Washington, Arizona, Florida, and Texas. The 3rd bar graph *figure 3* shows the origin of clinical cases. This means the origin of the source of infection, likely a food product. An overwhelming percentage of originated in Sweden, followed by Texas and New York.
+
+```{r}
+table_output
+```
 
 ```{r}
 knitr::include_graphics(here("results/figures", "isolatetypes.png"))
@@ -77,7 +84,7 @@ knitr::include_graphics(here("results/figures", "isolatecounts.png"))
 
 *Time of year or "season" as a predictor for clinical Listeria monocytogenes isolates*
 
-The first goal of this analysis is to find any seasonal patterns in *Listeria* infections and *Listeria* contaminated food items. In figure 5 we can see that cases of listeriosis typically dip around the 100th day of the year which is early April, and spikes near the 200th to 300th days of the year which are mid July to late October. The prediction model forecasted low counts of Listeriosis from the end of 2023 to earlt 2024
+The first goal of this analysis is to find any seasonal patterns in *Listeria* infections and *Listeria* contaminated food items. In figure 5 we can see that cases of listeriosis typically dip around the 100th day of the year which is early April, and spikes near the 200th to 300th days of the year which are mid July to late October. The prediction model forecasts low counts of Listeriosis from the end of 2023 to earlt 2024
 
 ```{r}
 knitr::include_graphics(here("results/figures", "gam_model.png"))

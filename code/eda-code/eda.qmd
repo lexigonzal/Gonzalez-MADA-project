@@ -17,7 +17,7 @@ library(ggplot2)
 ```
 
 
-Load the data.
+#Load the data.
 
 ```{r}
 #Path to data. Note the use of the here() package and not absolute paths
@@ -40,22 +40,7 @@ mydata <- mydata %>%
 
 ```
 
-
 # Data exploration through tables
-
-Showing a bit of code to produce and save a summary table.
-
-
-```{r}
-summary_df = skimr::skim(mydata)
-print(summary_df)
-# save to file
-summarytable_file = here("results", "tables", "summarytable.rds")
-saveRDS(summary_df, file = summarytable_file)
-```
-
-
-# Data exploration through figures
 
 #Making a table for the clinical variable 
 ```{r}
@@ -69,6 +54,71 @@ table(mydata$food)
 table(mydata$isolation_source)
 ```
 
+#Table 1: counts across the 15 year period with range and mean
+
+```{r}
+library(kableExtra)
+
+# Create new year and month columns
+mydata <- mydata %>%
+  mutate(
+    year = year(`Create date`), 
+    month = month(`Create date`, label = TRUE, abbr = TRUE)
+  )
+
+# Count records
+counts <- mydata %>%
+  group_by(year, month, isolation_source) %>%
+  summarize(count = n(), .groups = "drop")
+
+# Summarize by year and source
+yearly_totals <- counts %>%
+  group_by(isolation_source, year) %>%
+  summarize(
+    total = sum(count),
+    highest_month = month[which.max(count)],
+    lowest_month = month[which.min(count)],
+    .groups = "drop"
+  )
+
+# Pivot for final table
+table_data <- yearly_totals %>%
+  pivot_wider(
+    names_from = isolation_source,
+    values_from = c(total, highest_month, lowest_month),
+    names_sep = "_"
+  ) %>%
+  arrange(year)
+
+# Create the styled table
+table_output <- table_data %>%
+  kbl(
+    caption = "Yearly Isolate Summary by Source",
+    col.names = c(
+      "Year", 
+      "Total Clinical", "Total Environmental", "Total Food", 
+      "Highest Month (Clinical)", "Highest Month (Environmental)", "Highest Month (Food)", 
+      "Lowest Month (Clinical)", "Lowest Month (Environmental)", "Lowest Month (Food)"
+    )
+  ) %>%
+  kable_styling(
+    full_width = FALSE, 
+    position = "center", 
+    bootstrap_options = c("striped", "hover", "condensed")
+  )
+```
+
+
+```{r}
+# Define the file path
+summarytable_file <- here::here("results", "tables", "summarytable.rds")
+
+# Save the styled table as an RDS file
+saveRDS(table_output, file = summarytable_file)
+
+
+  
+```
 
 
 #Now lets visualize these tables using bar graphs of counts for food clincial and env
@@ -101,7 +151,7 @@ locations <- ggplot(
   labs(
     title = "Count of Food-Isolated Listeria Cases Across Locations",
     x = "Location",
-    y = "Count of Yes"
+    y = "Count of Isolates"
   ) + 
   theme_minimal() + 
   theme(axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
@@ -157,9 +207,9 @@ mydata %>%
   count(`Isolation source`) %>%
   ggplot(aes(x = `Isolation source`, y = n)) +
   geom_boxplot(fill = "darkblue") +
-  labs(title = "Count of Clinical 'Yes' Across Isolation Sources", 
+  labs(title = "Count of Clinical Isolates Across Isolation Sources", 
        x = "Isolation Source", 
-       y = "Count of Yes") +
+       y = "Count of isolates") +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 4, angle = 45, hjust = 1))
 
@@ -178,7 +228,7 @@ mydata %>%
   geom_bar(stat = "identity", fill = "darkblue") +
   labs(title = "Top 10 Clinical 'Yes' Isolation Sources", 
        x = "Isolation Source", 
-       y = "Count of Yes") +
+       y = "Count of isolates") +
   theme_minimal() +
   theme(axis.text.x = element_text(size = 10, angle = 45, hjust = 1))
 
@@ -193,7 +243,7 @@ mydata %>%
   top_n(10, n) %>%  # Keep only the top 10 sources
   ggplot(aes(x = reorder(`Isolation source`, -n), y = n)) +
   geom_bar(stat = "identity", fill = "darkblue") +
-  labs(title = "Top 10 Food 'Yes' Isolation Sources", 
+  labs(title = "Top 10 Food Isolation Sources", 
        x = "Isolation Source", 
        y = "Count of Yes") +
   theme_minimal() +
@@ -207,23 +257,24 @@ mydata %>%
 library(tidyverse)
 library(lubridate)
 
-# Step 1: Prepare the data — monthly counts
+#Prepare the data into monthly counts
 monthly_counts <- mydata %>%
   mutate(month = floor_date(`Create date`, "month")) %>%
   group_by(month) %>%
   summarize(
     food_count = sum(food == "Yes"),
-    clinical_count = sum(clinical == "Yes")
+    clinical_count = sum(clinical == "Yes"),
+    environmental_count = sum(isolation_source =="environmental")
   ) %>%
   ungroup()
 
-# Step 2: Convert to long format for plotting
+#Convert to long format for plotting
 monthly_long <- monthly_counts %>%
-  pivot_longer(cols = c(food_count, clinical_count),
+  pivot_longer(cols = c(food_count, clinical_count, environmental_count),
                names_to = "source_type",
                values_to = "count")
 
-# Step 3: Plot
+#Plot monthly counts
 ggplot(monthly_long, aes(x = month, y = count, color = source_type)) +
   geom_line(size = 1.2) +
   labs(
@@ -232,7 +283,7 @@ ggplot(monthly_long, aes(x = month, y = count, color = source_type)) +
     y = "Isolate Count",
     color = "Source Type"
   ) +
-  scale_color_manual(values = c("food_count" = "forestgreen", "clinical_count" = "firebrick")) +
+  scale_color_manual(values = c("environmental_count" = "forestgreen", "food_count" = "firebrick", "clinical_count"= "darkblue")) +
   theme_minimal()
 ```
 
@@ -246,7 +297,7 @@ Isolatecounts <- ggplot(monthly_long, aes(x = month, y = count, fill = source_ty
     y = "Isolate Count",
     fill = "Source Type"
   ) +
-  scale_fill_manual(values = c("food_count" = "forestgreen", "clinical_count" = "firebrick")) +
+  scale_fill_manual(values = c("environmental_count" = "forestgreen", "food_count" = "firebrick", "clinical_count"= "darkblue")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/isolatecounts.png", plot = Isolatecounts, width = 8, height = 6, dpi = 300)

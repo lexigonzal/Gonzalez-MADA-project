@@ -277,7 +277,7 @@ combined_months<- bind_rows(
 )
 
 # Plot
-seasonalpreds <- ggplot(combined_data, aes(x = month, y = clinical_count, color = source)) +
+seasonalpreds <- ggplot(combined_months, aes(x = month, y = clinical_count, color = source)) +
   geom_line() +
   labs(title = "Actual and Forecasted Clinical Isolate Counts",
        y = "Clinical Count",
