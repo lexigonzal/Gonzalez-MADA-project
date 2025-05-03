@@ -25,20 +25,6 @@ data_location <- here::here("data","processed-data","processeddata.rds")
 #load data
 mydata <- readRDS(data_location)
 ```
-#Creating an additional variable called "Isolation_source" This is different from the `Isolation Source` variable in that it will include food and not just list it under environmental/other
-```{r}
-mydata <- mydata %>%
-  mutate(
-    clinical = as.character(clinical),
-    food = as.character(food),
-    isolation_source = case_when(
-      clinical == "Yes" ~ "clinical",
-      food == "Yes" ~ "food",
-      TRUE ~ "environmental"
-    )
-  )
-
-```
 
 # Data exploration through tables
 
@@ -55,6 +41,12 @@ table(mydata$isolation_source)
 ```
 
 #Table 1: counts across the 15 year period with range and mean
+```{r}
+# Install once
+webshot::install_phantomjs()
+
+```
+
 
 ```{r}
 library(kableExtra)
@@ -106,6 +98,17 @@ table_output <- table_data %>%
     position = "center", 
     bootstrap_options = c("striped", "hover", "condensed")
   )
+print(table_output)
+```
+
+```{r}
+# Save as image
+save_kable(
+  table_output,
+  file = "/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/tables/yearly_isolate_summary.png"
+)
+
+
 ```
 
 

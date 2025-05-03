@@ -1,10 +1,12 @@
 ---
-title: 
-author: 
+title: "Statistical Analysis"
+author: "Alexis Gonzalez"
 date: 
 output: html_document
 ---
+
 # loading in packages
+
 ```{r}
 library(tidyverse)
 library(here) 
@@ -16,9 +18,11 @@ library(lubridate)
 library(ranger)
 library(parsnip)
 library(poissonreg)
-library(randomForest)
+library(MASS)
 ```
+
 #Load in the data
+
 ```{r}
 #Path to data. 
 data_location <- here::here("data","processed-data","processeddata.rds")
@@ -26,511 +30,647 @@ data_location <- here::here("data","processed-data","processeddata.rds")
 mydata <- readRDS(data_location)
 ```
 
-#Here I will perform some basic statistical analysis.
-
-#Lets start with a basic glm of time and food and time and clinical. We will also do some visualizations using a histrogram
-
-#To do this I have to convert my date variable into a numeric variable.
-
-```{r}
-# Load necessary package
-library(lubridate)
-
-"# Sample data
-mydata <- data.frame(
-  date `Create date` = as.Date,
-  outcome = clinical  # Yes = 1, No = 0
-)"
-
-
-# Recode Yes = 1, No = 0
-mydata$clinical_numeric <- ifelse(mydata$clinical == "Yes", 1, 0)
-
-
-# Convert date to numeric (days since first observation)
-mydata$days_since_start <- as.numeric(difftime(mydata$`Create date`, min(mydata$`Create date`), units = "days"))
-
-# Logistic regression
-model <- glm(clinical_numeric ~ days_since_start, data = mydata, family = binomial)
-
-# Model summary
-summary(model)
-
-```
-
-
-
-
-
-
-
-
 
 # temporal analysis of clinical isolates. Remember that every clinical isolate is like a human case of Listeriosis.
+
 #For this analysis I will make some changes to my data by separating the time data into seasons.Winter is considered December, January and February; spring is March through May; summer is June through August; and fall or autumn is September through November.
 
-
+#POISSON MODELING
 ```{r}
-mydata <- mydata %>%
-  drop_na()%>%
-  mutate(
-    `Create date` = as.Date(`Create date`),
-    year = year(`Create date`),
-    day_of_year= yday(`Create date`),
-    week = week(`Create date`),
-    month = month(`Create date`),
-    season = case_when(
-      month %in% c(12, 1, 2)  ~ "Winter",
-      month %in% c(3, 4, 5)   ~ "Spring",
-      month %in% c(6, 7, 8)   ~ "Summer",
-      month %in% c(9, 10, 11) ~ "Fall"
-    ),
-    season = factor(season, levels = c("Winter", "Spring", "Summer", "Fall")),
-    `Isolation source` = factor(`Isolation source`)
-  )
-```
-
-#Feature selection
-```{r}
-model1_data <- mydata %>%
-  select(`Isolation type`,year,month,day_of_year,week,season)
-```
-
-#Split the data
-```{r}
-set.seed(1234)
-data_split <- initial_split(model1_data, prop = 0.8, strata = `Isolation type`)
-train_data <-training(data_split)
-test_data <-testing(data_split)
-```
-#Create recipe
-```{r}
-rf_recipe <- recipe(`Isolation type` ~ month + year + day_of_year + week + season, data = train_data) %>%
-  step_dummy(all_nominal_predictors()) %>%
-  step_zv(all_predictors()) %>%
-  step_normalize(all_numeric_predictors())
-```
-
-#Define the model
-```{r}
-rf_mod <-rand_forest(trees = 150, min_n =5) %>%
-  set_mode("classification") %>%
-  set_engine("ranger",importance="impurity")
-```
-Create workflow
-```{r}
-workflow1 <- workflow() %>%
-  add_model(rf_mod)%>%
-  add_recipe(rf_recipe)
-```
-#fit the random forest model
-```{r}
-fit1 <- workflow1 %>%
-  fit(data = train_data)
-```
-#Make predictions for evaluation
-```{r}
-predictions_rf <-fit1 %>%
-  predict(new_data = test_data) %>%
-  bind_cols(test_data)
-
-```
-```{r}
-#set isolation source as a factor
-predictions_rf <- predictions_rf %>%
-  mutate(`Isolation type` = as.factor(`Isolation type`))
-
-```
-
-#Run metrics to evaluate the model
-```{r}
-# Create a metric set for classification
-classification_metrics <- metric_set(accuracy, precision, recall, f_meas)
-```
-
-```{r}
-#  use it on predictions
-metrics_rf <- predictions_rf %>%
-  classification_metrics(truth = `Isolation type`, estimate = .pred_class)
-
-```
-
-```{r}
-metrics_rf <- predictions_rf %>%
-  metrics(truth = `Isolation type`, estimate = .pred_class)
-print(metrics_rf)
-```
-#Plot the results of this model
-
-
-```{r}
-library(vip)  # for variable importance plot
-
-# Extract the fitted model from the workflow
-rf_fit <- extract_fit_parsnip(fit1)
-
-# Plot variable importance
-vip(rf_fit$fit)
-
-```
-
-
-#Poisson modeling using month
-
-```{r}
-# Create monthly clinical counts
-monthly_counts <- mydata %>%
-  filter(clinical == "Yes") %>%
-  mutate(month = floor_date(`Create date`, "month")) %>%
-  group_by(month) %>%
-  summarize(clinical_count = n()) %>%
+# Create monthly counts for clinical, food, and environmental
+monthly_clinical <- mydata %>% 
+  filter(clinical == "Yes") %>% 
+  mutate(month = floor_date(`Create date`, "month")) %>% 
+  group_by(month) %>% 
+  summarize(clinical_count = n()) %>% 
   ungroup()
-#filling in gaps with 0
-monthly_counts <- monthly_counts %>%
+
+monthly_food <- mydata %>% 
+  filter(food == "Yes") %>% 
+  mutate(month = floor_date(`Create date`, "month")) %>% 
+  group_by(month) %>% 
+  summarize(food_count = n()) %>% 
+  ungroup()
+
+monthly_environmental <- mydata %>% 
+  filter(isolation_source == "environmental") %>% 
+  mutate(month = floor_date(`Create date`, "month")) %>% 
+  group_by(month) %>% 
+  summarize(environmental_count = n()) %>% 
+  ungroup()
+
+# Combine all counts into one dataset
+monthly_counts_combined <- monthly_clinical %>%
+  full_join(monthly_food, by = "month") %>%
+  full_join(monthly_environmental, by = "month")
+
+# View the combined dataset
+head(monthly_counts_combined)
+
+```
+
+#TEMPORAL x CLINCAL
+
+```{r}
+# Filling in gaps with 0 for all counts
+monthly_counts_combined <- monthly_counts_combined %>%
   complete(month = seq.Date(min(month), max(month), by = "month"),
-           fill = list(clinical_count = 0))
-#Feature engineering, extracting the month from the data
-monthly_counts <- monthly_counts %>%
+           fill = list(clinical_count = 0, food_count = 0, environmental_count = 0))
+
+# Feature engineering: extracting the month from the data
+monthly_counts_combined <- monthly_counts_combined %>%
   mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
 
-```
-
-```{r}
-library(tidymodels)
-library(parsnip)
-#Splitting the data 
+# Splitting the data
 set.seed(123)
-data_split2 <- initial_time_split(monthly_counts, prop = 0.8)
+data_split2 <- initial_time_split(monthly_counts_combined, prop = 0.8)
 train_data2 <- training(data_split2)
 test_data2  <- testing(data_split2)
 
-```
-```{r}
-#create a recipe 
-poisson_recipe <- recipe(clinical_count ~ month_name, data = train_data2) %>%
+# Create a recipe for clinical_count
+poisson_recipe1 <- recipe(clinical_count ~ month_name, data = train_data2) %>%
   step_dummy(all_nominal_predictors())
 
-```
-```{r}
-#Select the model
-poisson_model <- 
-  poisson_reg(
-    mode = "regression",
-    penalty = NULL,
-    mixture = NULL,
-    engine ="glm"
-  )
-
-```
-```{r}
-#Create a workflow 
-library(poissonreg)
-poisson_wf <-workflow() %>%
-  add_model(poisson_model) %>%
-  add_recipe(poisson_recipe)
-```
-```{r}
-#fit the model
-poisson_fit <- poisson_wf %>%
-  fit(data = train_data2)
-```
-```{r}
-#make predictions
-predictions <- predict(poisson_fit, new_data = train_data2) %>%
-  bind_cols(train_data2)
-metrics(predictions, truth = clinical_count, estimate =.pred)
-```
-#Visualize results
-```{r}
-poisson_seasonal <- ggplot(predictions, aes(x = month)) +
-  geom_line(aes(y = clinical_count), color = "black", linetype = "dashed") +
-  geom_line(aes(y = .pred), color = "blue") +
-  labs(title = "Predicted vs Actual Monthly Clinical Isolate Counts",
-       y = "Clinical Count")
-print(poisson_seasonal)
-ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/poisson_seasonal.png", plot = poisson_seasonal, width = 8, height = 6, dpi = 300)
-```
-#Predict future isolate counts based on seasonality
-```{r}
-last_month <-max(monthly_counts$month)
-```
-
-
-```{r}
-future_months <- tibble(
-  month = seq.Date(from = last_month %m+% months(1),by = "month", length.out = 12)
-)%>%
-  mutate(month_name = factor(month(month, label = TRUE), ordered= FALSE))
-```
-
-```{r}
-#make predictions
-future_predictions <- predict(poisson_fit, new_data = future_months)%>%
-  bind_cols(future_months)
-```
-```{r}
-#visualize
-# Combine historical + future for plotting
-combined_months<- bind_rows(
-  monthly_counts %>% select(month, clinical_count) %>% mutate(source = "Actual"),
-  future_predictions %>% rename(clinical_count = .pred) %>% mutate(source = "Forecast")
+# Select Poisson model
+poisson_model <- poisson_reg(
+  mode = "regression",
+  penalty = NULL,
+  mixture = NULL,
+  engine = "glm"
 )
 
-# Plot
-seasonalpreds <- ggplot(combined_months, aes(x = month, y = clinical_count, color = source)) +
-  geom_line() +
-  labs(title = "Actual and Forecasted Clinical Isolate Counts",
-       y = "Clinical Count",
-       x = "Month") +
-  scale_color_manual(values = c("Actual" = "black", "Forecast" = "blue")) +
-  theme_minimal()
-print(seasonalpreds)
-ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/seasonalpreds.png", plot = seasonalpreds, width = 8, height = 6, dpi = 300)
-```
+# Create a workflow
+library(poissonreg)
+poisson_wf1 <- workflow() %>%
+  add_model(poisson_model) %>%
+  add_recipe(poisson_recipe1)
 
-```{r}
+# Fit the model
+poisson_fit1 <- poisson_wf1 %>% fit(data = train_data2)
 
+# Make predictions
+predictions1 <- predict(poisson_fit1, new_data = train_data2) %>%
+  bind_cols(train_data2)
 
-# 1. Get the last month from your historical data
-last_month <- max(monthly_counts$month)
+# Evaluate performance
+library(yardstick)
+metric_table <- metrics(predictions1, truth = clinical_count, estimate = .pred)
+save_table_location <- here::here("results","tables","metric_table.rds")
+saveRDS(metric_table, file = save_table_location)
+# Predict future clinical isolate counts
+last_month <- max(monthly_counts_combined$month)
 
-# 2. Create the next 12 months
-future_months <- tibble(
+future_months1 <- tibble(
   month = seq.Date(from = last_month %m+% months(1), by = "month", length.out = 12)
 ) %>%
   mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
 
-# 3. Make predictions using your Poisson model (or other model)
-future_predictions <- predict(poisson_fit, new_data = future_months) %>%
-  bind_cols(future_months)
+# Future predictions
+future_predictions1 <- predict(poisson_fit1, new_data = future_months1) %>%
+  bind_cols(future_months1)
 
-# 4. Combine historical and forecast data
-combined_months <- bind_rows(
-  monthly_counts %>% 
-    select(month, clinical_count) %>% 
-    mutate(source = "Actual"),
-  future_predictions %>% 
-    rename(clinical_count = .pred) %>% 
-    mutate(source = "Forecast")
+# Combine actual and forecasted for plotting
+combined_months1 <- bind_rows(
+  monthly_counts_combined %>% select(month, clinical_count) %>% mutate(source = "Actual"),
+  future_predictions1 %>% rename(clinical_count = .pred) %>% mutate(source = "Forecast")
 )
 
-# 5. Plot
-seasonalpreds <- ggplot(combined_months, aes(x = month, y = clinical_count, color = source)) +
-  geom_line(size = 1.2) +
-  labs(
-    title = "Actual and Forecasted Clinical Isolate Counts",
-    y = "Clinical Count",
-    x = "Month"
-  ) +
+# Plot actual vs forecast
+seasonalpreds <- ggplot(combined_months1, aes(x = month, y = clinical_count, color = source)) +
+  geom_line() +
+  labs(title = "Actual and Forecasted Clinical Isolate Counts",
+       y = "Clinical Count", x = "Month") +
   scale_color_manual(values = c("Actual" = "black", "Forecast" = "blue")) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  theme_minimal()
 
-# 6. Show plot
 print(seasonalpreds)
 
-# 7. Save to file
-ggsave(
-  "/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/seasonalpreds.png", 
-  plot = seasonalpreds, width = 8, height = 6)
+# Extract the fitted glm model from the workflow
+poisson_fit1_glm <- extract_fit_engine(poisson_fit1)
 
-```
+# Calculate deviance residuals
+deviance_residuals_clinical <- residuals(poisson_fit1_glm, type = "deviance")
 
-```{r}
-library(mgcv)
-gam_model <- gam(clinical_count ~ s(day_of_year), family = poisson(), data = daily_counts)
-plot(gam_model)
-```
+# Calculate Pearson residuals
+pearson_residuals_clinical <- residuals(poisson_fit1_glm, type = "pearson")
 
+# Plot deviance residuals
 
-```{r}
-# Load necessary library
-library(mgcv)
-library(gratia) # for tidy ggplot GAM visualizations
-
-# Example: Create ggplot-style plot from your GAM model
-gam_plot <- draw(gam_model)  # `gam_model` is your fitted model
-
-# Now save it
-ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/gam_model.png",
-       plot = gam_plot, width = 8, height = 6, dpi = 300)
-
-```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-```{r}
-
-#  Split the data into training and testing sets
-set.seed(123)
-data_split <- initial_split(monthly_counts, prop = 0.8)
-train_data <- training(data_split)
-test_data <- testing(data_split)
-
-#  Define the recipe (clinical_count predicted by food_count)
-poisson_recipe <- recipe(clinical_count ~ food_count, data = train_data)
-
-# Define the Poisson regression model
-poisson_model <- poisson_reg(mode = "regression", engine = "glm")
-
-#  Create a workflow 
-poisson_wf <- workflow() %>%
-  add_recipe(poisson_recipe) %>%
-  add_model(poisson_model)
-
-#  Fit the model
-poisson_fit <- poisson_wf %>%
-  fit(data = train_data)
-
-# Make predictions on the training data
-predictions <- predict(poisson_fit, new_data = train_data) %>%
-  bind_cols(train_data)
-
-#  Evaluate the model 
-isolate_metrics <- metrics(predictions, truth = clinical_count, estimate = .pred)
-print(isolate_metrics)
-
-# Visualize the results
-ggplot(predictions, aes(x = month)) +
-  geom_col(aes(y = clinical_count), fill = "lightgray", alpha = 0.8) +
-  geom_line(aes(y = .pred), color = "blue", size = 1) +
-  labs(
-    title = "Poisson Regression: Predicting Clinical Isolates from Food Isolates",
-    y = "Clinical Isolate Count",
-    x = "Month"
-  ) +
-  theme_minimal()
-```
-#Chart showing likelihood
-```{r}
-
-
-```
-
-
-
-#Now I want to do one more advanced statistical analysis. This analysis will utilize the counts of clinical and counts of food isolates each year and see if the amount of clinical isolates can be predicted by the amount of food isolates. This purpose of this analysis is to see if federal reguulations are doing a good job of preventing illness.
-
-#put my food and clinical variable into counts and group by year
-
-
-```{r}
-monthly_counts2 <- mydata %>%
-  mutate(month = floor_date(`Create date`, "month")) %>%
-  count(month, isolation_source) %>%
-  tidyr::pivot_wider(names_from = isolation_source, values_from = n, values_fill = 0)
-```
-
-```{r}
-set.seed(123)  # for reproducibility
-
-rf_model <- randomForest(
-  clinical ~ food + environmental,
-  data = monthly_counts2,
-  ntree = 500,          # number of trees
-  importance = TRUE     # track variable importance
-)
-print(rf_model)
-
-```
-
-
-
-
-```{r}
-#model_predict_clinical <- lm(clinical ~ food + environmental, data = monthly_counts2)
-#summary(model)
-
-
-```{r}
-
-```
-
-`
-#Visualzing the future
-```{r}
-# Suppose you created this:
-future_data <- data.frame(
-  month = as.Date(c("2025-02-01","2025-03-01","2025-04-01","2025-05-01", "2025-06-01", "2025-07-01","2025-08-01","2025-09-01","2025-10-01","2025-11-01","2025-12-01")),
-  food = c(300,220, 180, 250,140,122,116,235,96,175,225),
-  environmental = c(350,150, 170, 200,220,140,267,178,155,200,280)
-)
-```
-
-
-```{r}
-# Predict clinical isolates
-future_data$Predicted_Clinical <- predict(rf_model, newdata = future_data)
-```
-
-
-```{r}
-# Predict clinical isolates for future months
-future_data$Predicted_Clinical <- predict(rf_model, newdata = future_data)
-
-# Combine with past data (no predicted clinicals in the past, so we set it to NA)
-combined_plot_data <- monthly_counts2 %>%
-  select(month, clinical) %>%
-  mutate(Predicted_Clinical = NA,
-         Source = "Historical") %>%
-  bind_rows(
-    future_data %>%
-      transmute(month, clinical = NA, Predicted_Clinical, Source = "Forecast")
+residuals_df <- train_data2 %>%
+  mutate(
+    deviance_residual = deviance_residuals_clinical,
+    pearson_residual = pearson_residuals_clinical,
+    fitted = fitted(poisson_fit1_glm)
   )
 
+# Deviance residual plot
+ggplot(residuals_df, aes(x = fitted, y = deviance_residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Deviance Residuals vs Fitted Values",
+       x = "Fitted Values", y = "Deviance Residuals") +
+  theme_minimal()
 
-# Filter combined_plot_data for the last 3 years
-recent_data <- combined_plot_data %>%
-  filter(month >= (max(month) %m-% years(3)))
+# Pearson residual plot
+ggplot(residuals_df, aes(x = fitted, y = pearson_residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "blue", linetype = "dashed") +
+  labs(title = "Pearson Residuals vs Fitted Values",
+       x = "Fitted Values", y = "Pearson Residuals") +
+  theme_minimal()
 
-# Plot
-ggplot(recent_data, aes(x = month)) +
-  geom_line(aes(y = Predicted_Clinical, color = Source), size = 1.2, linetype = "dashed") +
-  geom_line(data = recent_data %>% filter(!is.na(clinical)),
-            aes(y = clinical, color = "Observed"), size = 1) +
-  scale_color_manual(values = c("Observed" = "steelblue", "Historical" = "tomato", "Forecast" = "forestgreen")) +
-  labs(title = "Observed and Forecasted Clinical Isolates (Past 3 Years)",
-       x = "Month",
-       y = "Count",
-       color = "Legend") +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+# Estimate dispersion parameter
+# Dispersion = sum of squared Pearson residuals / residual degrees of freedom
+pearson_chisq <- sum(residuals_df$pearson_residual^2)
+resid_df <- poisson_fit1_glm$df.residual
+dispersion_estimate <- pearson_chisq / resid_df
 
-```
-```{r}
-# Create new data (adjust as needed)
-new_data <- data.frame(food = c(200), environmental = c(150))
-
-# Predict clinical isolates
-predict(model_predict_clinical, newdata = new_data)
+print(paste("Estimated dispersion:", round(dispersion_estimate, 3)))
 
 ```
-#Machine Learning since this was just a simple linear regression
-#Random forest
+
+
+
+
+#TEMPORAL X FOOD
+
 ```{r}
-#set seed and split data
+# Filling in gaps with 0 for food_count
+monthly_counts_combined <- monthly_counts_combined %>%
+  complete(month = seq.Date(min(month), max(month), by = "month"),
+           fill = list(food_count = 0))
+
+# Feature engineering: extracting the month from the data
+monthly_counts_combined <- monthly_counts_combined %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# Splitting the data
 set.seed(123)
-data_split3 <- initial_split(model_data, prop = 0.8)
-train_data3 <- training(data_split3)
-test_data3 <- testing(data_split3)
+data_split2 <- initial_time_split(monthly_counts_combined, prop = 0.8)
+train_data2 <- training(data_split2)
+test_data2  <- testing(data_split2)
+
+# Create a recipe for food_count
+poisson_recipe_food <- recipe(food_count ~ month_name, data = train_data2) %>%
+  step_dummy(all_nominal_predictors())
+
+# Select Poisson model
+poisson_model_food <- poisson_reg(
+  mode = "regression",
+  penalty = NULL,
+  mixture = NULL,
+  engine = "glm"
+)
+
+# Create a workflow
+poisson_wf_food <- workflow() %>%
+  add_model(poisson_model_food) %>%
+  add_recipe(poisson_recipe_food)
+
+# Fit the model
+poisson_fit_food <- poisson_wf_food %>% fit(data = train_data2)
+
+# Make predictions
+predictions_food <- predict(poisson_fit_food, new_data = train_data2) %>%
+  bind_cols(train_data2)
+
+# Evaluate performance
+library(yardstick)
+metric_table2 <- metrics(predictions_food, truth = food_count, estimate = .pred)
+save_table_location <- here::here("results","tables","metric_table2.rds")
+saveRDS(metric_table2, file = save_table_location)
+
+# Predict future food isolate counts
+last_month <- max(monthly_counts_combined$month)
+
+future_months_food <- tibble(
+  month = seq.Date(from = last_month %m+% months(1), by = "month", length.out = 12)
+) %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# Future predictions
+future_predictions_food <- predict(poisson_fit_food, new_data = future_months_food) %>%
+  bind_cols(future_months_food)
+
+# Combine actual and forecasted for plotting
+combined_months_food <- bind_rows(
+  monthly_counts_combined %>% select(month, food_count) %>% mutate(source = "Actual"),
+  future_predictions_food %>% rename(food_count = .pred) %>% mutate(source = "Forecast")
+)
+
+# Plot actual vs forecast
+pmodel_food <- ggplot(combined_months_food, aes(x = month, y = food_count, color = source)) +
+  geom_line() +
+  labs(title = "Actual and Forecasted Food Isolate Counts",
+       y = "Food Count", x = "Month") +
+  scale_color_manual(values = c("Actual" = "black", "Forecast" = "blue")) +
+  theme_minimal()
+
+# Print and save the plot
+print(pmodel_food)
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/pmodel_food.png",
+       plot = pmodel_food, width = 8, height = 6, dpi = 300)
+
+
+# Extract the fitted glm model
+poisson_fit_food_glm <- extract_fit_engine(poisson_fit_food)
+
+# Calculate deviance and Pearson residuals
+deviance_residuals_food <- residuals(poisson_fit_food_glm, type = "deviance")
+pearson_residuals_food <- residuals(poisson_fit_food_glm, type = "pearson")
+
+# Create residuals data frame
+residuals_df_food <- train_data2 %>%
+  mutate(
+    deviance_residual = deviance_residuals_food,
+    pearson_residual = pearson_residuals_food,
+    fitted = fitted(poisson_fit_food_glm)
+  )
+
+# Deviance residual plot
+ggplot(residuals_df_food, aes(x = fitted, y = deviance_residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Deviance Residuals vs Fitted Values (Food)",
+       x = "Fitted Values", y = "Deviance Residuals") +
+  theme_minimal()
+
+# Pearson residual plot
+ggplot(residuals_df_food, aes(x = fitted, y = pearson_residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "blue", linetype = "dashed") +
+  labs(title = "Pearson Residuals vs Fitted Values (Food)",
+       x = "Fitted Values", y = "Pearson Residuals") +
+  theme_minimal()
+
+# Estimate dispersion
+pearson_chisq_food <- sum(residuals_df_food$pearson_residual^2)
+resid_df_food <- poisson_fit_food_glm$df.residual
+dispersion_estimate_food <- pearson_chisq_food / resid_df_food
+
+print(paste("Estimated dispersion (food model):", round(dispersion_estimate_food, 3)))
+
+
+```
+
+#TEMPORAL X ENVIRONMENTAL
+
+```{r}
+# Filling in gaps with 0 for environmental_count
+monthly_counts_combined <- monthly_counts_combined %>%
+  complete(month = seq.Date(min(month), max(month), by = "month"),
+           fill = list(environmental_count = 0))
+
+# Feature engineering: extracting the month from the data
+monthly_counts_combined <- monthly_counts_combined %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# Splitting the data
+set.seed(123)
+data_split2 <- initial_time_split(monthly_counts_combined, prop = 0.8)
+train_data2 <- training(data_split2)
+test_data2  <- testing(data_split2)
+
+# Create a recipe for environmental_count
+poisson_recipe_env <- recipe(environmental_count ~ month_name, data = train_data2) %>%
+  step_dummy(all_nominal_predictors())
+
+# Select Poisson model
+poisson_model_env <- poisson_reg(
+  mode = "regression",
+  penalty = NULL,
+  mixture = NULL,
+  engine = "glm"
+)
+
+# Create a workflow
+poisson_wf_env <- workflow() %>%
+  add_model(poisson_model_env) %>%
+  add_recipe(poisson_recipe_env)
+
+# Fit the model
+poisson_fit_env <- poisson_wf_env %>% fit(data = train_data2)
+
+# Make predictions
+predictions_env <- predict(poisson_fit_env, new_data = train_data2) %>%
+  bind_cols(train_data2)
+
+# Evaluate performance
+library(yardstick)
+metric_table3 <- metrics(predictions_env, truth = environmental_count, estimate = .pred)
+save_table_location <- here::here("results","tables","metric_table3.rds")
+saveRDS(metric_table3, file = save_table_location)
+# Predict future environmental isolate counts
+last_month <- max(monthly_counts_combined$month)
+
+future_months_env <- tibble(
+  month = seq.Date(from = last_month %m+% months(1), by = "month", length.out = 12)
+) %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# Future predictions
+future_predictions_env <- predict(poisson_fit_env, new_data = future_months_env) %>%
+  bind_cols(future_months_env)
+
+# Combine actual and forecasted for plotting
+combined_months_env <- bind_rows(
+  monthly_counts_combined %>% select(month, environmental_count) %>% mutate(source = "Actual"),
+  future_predictions_env %>% rename(environmental_count = .pred) %>% mutate(source = "Forecast")
+)
+
+# Plot actual vs forecast
+pmodel_env <- ggplot(combined_months_env, aes(x = month, y = environmental_count, color = source)) +
+  geom_line() +
+  labs(title = "Actual and Forecasted Environmental Isolate Counts",
+       y = "Environmental Count", x = "Month") +
+  scale_color_manual(values = c("Actual" = "black", "Forecast" = "blue")) +
+  theme_minimal()
+
+# Print and save the plot
+print(pmodel_env)
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/pmodel_env.png",
+       plot = pmodel_env, width = 8, height = 6, dpi = 300)
+
+#RESIDUALS AND DISPERSION
+
+# Extract the fitted glm model
+poisson_fit_env_glm <- extract_fit_engine(poisson_fit_env)
+
+# Calculate deviance and Pearson residuals
+deviance_residuals_env <- residuals(poisson_fit_env_glm, type = "deviance")
+pearson_residuals_env <- residuals(poisson_fit_env_glm, type = "pearson")
+
+# Create residuals data frame
+residuals_df_env <- train_data2 %>%
+  mutate(
+    deviance_residual = deviance_residuals_env,
+    pearson_residual = pearson_residuals_env,
+    fitted = fitted(poisson_fit_env_glm)
+  )
+
+# Deviance residual plot
+ggplot(residuals_df_env, aes(x = fitted, y = deviance_residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  labs(title = "Deviance Residuals vs Fitted Values (Environmental)",
+       x = "Fitted Values", y = "Deviance Residuals") +
+  theme_minimal()
+
+# Pearson residual plot
+ggplot(residuals_df_env, aes(x = fitted, y = pearson_residual)) +
+  geom_point() +
+  geom_hline(yintercept = 0, color = "blue", linetype = "dashed") +
+  labs(title = "Pearson Residuals vs Fitted Values (Environmental)",
+       x = "Fitted Values", y = "Pearson Residuals") +
+  theme_minimal()
+
+# Estimate dispersion
+pearson_chisq_env <- sum(residuals_df_env$pearson_residual^2)
+resid_df_env <- poisson_fit_env_glm$df.residual
+dispersion_estimate_env <- pearson_chisq_env / resid_df_env
+
+print(paste("Estimated dispersion (environmental model):", round(dispersion_estimate_env, 3)))
+
+```
+
+#Negative Binomial 
+
+#CLINICAL
+```{r}
+# Prepare data
+clinical_counts <- monthly_counts_combined %>%
+  select(month, clinical_count) %>%
+  complete(month = seq.Date(min(month), max(month), by = "month"),
+           fill = list(clinical_count = 0)) %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# Split
+set.seed(123)
+clinical_split <- initial_time_split(clinical_counts, prop = 0.8)
+clinical_train <- training(clinical_split)
+clinical_test  <- testing(clinical_split)
+
+# Recipe
+clinical_recipe <- recipe(clinical_count ~ month_name, data = clinical_train) %>%
+  step_dummy(all_nominal_predictors())
+
+# Model
+clinical_nb_model <- linear_reg(mode = "regression") %>%
+  set_engine("glm", family = MASS::negative.binomial(theta = 3.5))
+
+# Workflow
+clinical_nb_wf <- workflow() %>%
+  add_model(clinical_nb_model) %>%
+  add_recipe(clinical_recipe)
+
+# Fit
+clinical_nb_fit <- clinical_nb_wf %>%
+  fit(data = clinical_train)
+
+# Training predictions + metrics
+clinical_preds <- predict(clinical_nb_fit, new_data = clinical_train) %>%
+  bind_cols(clinical_train)
+
+metric_table4<-metrics(clinical_preds, truth = clinical_count, estimate = .pred)
+save_table_location <- here::here("results","tables","metric_table4.rds")
+saveRDS(metric_table4, file = save_table_location)
+
+
+##DISPERSION##
+# Extract the fitted glm object
+nb_fit_engine <- extract_fit_engine(clinical_nb_fit)
+
+# Calculate Pearson residuals
+pearson_resids <- residuals(nb_fit_engine, type = "pearson")
+
+# Residual degrees of freedom
+resid_df <- nb_fit_engine$df.residual
+
+# Dispersion estimate
+dispersion <- sum(pearson_resids^2) / resid_df
+
+# Print
+print(paste("Estimated Dispersion (Negative Binomial):", round(dispersion, 3)))
+
+nmodel_clinical <- ggplot(clinical_preds, aes(x = month)) +
+  geom_line(aes(y = clinical_count, color = "Actual")) +
+  geom_line(aes(y = .pred, color = "Predicted")) +
+  labs(
+    title = "Actual and Predicted Clinical Isolate Counts (Negative Binomial Model)",
+    x = "Month",
+    y = "Clinical Count"
+  ) +
+  scale_color_manual(
+    name = "Source",
+    values = c("Actual" = "black", "Predicted" = "blue")
+  ) +
+  theme_minimal()
+
+# Display the plot
+nmodel_clinical
+
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/nmodel_clinical.png",
+       plot = nmodel_clinical, width = 8, height = 6, dpi = 300)
+```
+
+
+
+#FOOD
+
+
+
+```{r}
+# Prepare data
+food_counts <- monthly_counts_combined %>%
+  select(month, food_count) %>%
+  complete(month = seq.Date(min(month), max(month), by = "month"),
+           fill = list(food_count = 0)) %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# Split
+set.seed(123)
+food_split <- initial_time_split(food_counts, prop = 0.8)
+food_train <- training(food_split)
+food_test  <- testing(food_split)
+
+# Recipe
+food_recipe <- recipe(food_count ~ month_name, data = food_train) %>%
+  step_dummy(all_nominal_predictors())
+
+# Model
+food_nb_model <- linear_reg(mode = "regression") %>%
+  set_engine("glm", family = MASS::negative.binomial(theta = 2))
+
+# Workflow
+food_nb_wf <- workflow() %>%
+  add_model(food_nb_model) %>%
+  add_recipe(food_recipe)
+
+# Fit
+food_nb_fit <- food_nb_wf %>%
+  fit(data = food_train)
+
+# Training predictions + metrics
+food_preds <- predict(food_nb_fit, new_data = food_train) %>%
+  bind_cols(food_train)
+
+metrics_table5 <- metrics(food_preds, truth = food_count, estimate = .pred)
+save_table_location <- here::here("results","tables","metrics_table5.rds")
+saveRDS(metrics_table5, file = save_table_location)
+# Extract the fitted glm object from the workflow
+food_nb_engine <- extract_fit_engine(food_nb_fit)
+
+# Calculate Pearson residuals
+pearson_resids_food <- residuals(food_nb_engine, type = "pearson")
+
+# Residual degrees of freedom
+resid_df_food <- food_nb_engine$df.residual
+
+# Dispersion estimate
+dispersion_food <- sum(pearson_resids_food^2) / resid_df_food
+
+# Print the dispersion
+print(paste("Estimated Dispersion (Negative Binomial - Food Model):", round(dispersion_food, 3)))
+
+
+nmodel_food <- ggplot(food_preds, aes(x = month)) +
+  geom_line(aes(y = food_count, color = "Actual")) +
+  geom_line(aes(y = .pred, color = "Predicted")) +
+  labs(
+    title = "Actual and Predicted Food Isolate Counts (Negative Binomial Model)",
+    x = "Month",
+    y = "Food Count"
+  ) +
+  scale_color_manual(
+    name = "Source",
+    values = c("Actual" = "black", "Predicted" = "blue")
+  ) +
+  theme_minimal()
+
+# Print the plot
+nmodel_food
+
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/nmodel_food.png",
+       plot = nmodel_food, width = 8, height = 6, dpi = 300)
+
+
+
+```
+#ENVIRONMENTAL
+```{r}
+
+# Prepare data
+environmental_counts <- monthly_counts_combined %>%
+  select(month, environmental_count) %>%
+  complete(month = seq.Date(min(month), max(month), by = "month"),
+           fill = list(environmental_count = 0)) %>%
+  mutate(month_name = factor(month(month, label = TRUE), ordered = FALSE))
+
+# Split
+set.seed(123)
+env_split <- initial_time_split(environmental_counts, prop = 0.8)
+env_train <- training(env_split)
+env_test  <- testing(env_split)
+
+# Recipe
+env_recipe <- recipe(environmental_count ~ month_name, data = env_train) %>%
+  step_dummy(all_nominal_predictors())
+
+# Model
+env_nb_model <- linear_reg(mode = "regression") %>%
+  set_engine("glm", family = MASS::negative.binomial(theta = 1))
+
+# Workflow
+env_nb_wf <- workflow() %>%
+  add_model(env_nb_model) %>%
+  add_recipe(env_recipe)
+
+# Fit
+env_nb_fit <- env_nb_wf %>%
+  fit(data = env_train)
+
+# Training predictions + metrics
+env_preds <- predict(env_nb_fit, new_data = env_train) %>%
+  bind_cols(env_train)
+
+metrics_table6 <- metrics(env_preds, truth = environmental_count, estimate = .pred)
+save_table_location <- here::here("results","tables","metrics_table6.rds")
+saveRDS(metrics_table6, file = save_table_location)
+# Extract the fitted glm object from the workflow
+env_nb_engine <- extract_fit_engine(env_nb_fit)
+
+# Calculate Pearson residuals
+pearson_resids_env <- residuals(env_nb_engine, type = "pearson")
+
+# Residual degrees of freedom
+resid_df_env <- env_nb_engine$df.residual
+
+# Dispersion estimate
+dispersion_env <- sum(pearson_resids_env^2) / resid_df_env
+
+# Print the dispersion
+print(paste("Estimated Dispersion (Negative Binomial - Environmental Model):", round(dispersion_env, 3)))
+
+nmodel_env <- ggplot(env_preds, aes(x = month)) +
+  geom_line(aes(y = environmental_count, color = "Actual")) +
+  geom_line(aes(y = .pred, color = "Predicted")) +
+  labs(
+    title = "Actual and Predicted Environmental Isolate Counts (Negative Binomial Model)",
+    x = "Month",
+    y = "Environmental Count"
+  ) +
+  scale_color_manual(
+    name = "Source",
+    values = c("Actual" = "black", "Predicted" = "blue")
+  ) +
+  theme_minimal()
+
+# Display the plot
+nmodel_env
+
+
+ggsave("/Users/alexisgonzalez/Desktop/MADA/Gonzalez-MADA-project/results/figures/nmodel_env.png",
+       plot = nmodel_env, width = 8, height = 6, dpi = 300)
 
 ```
 
